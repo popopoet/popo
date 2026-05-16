@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', glyph: '◧' },
-  { href: '/journal', label: 'Journal', glyph: '≡' },
-  { href: '/weekly', label: 'Weekly Review', glyph: '▤' },
+  { href: '/dashboard', label: 'Dashboard', glyph: '◧', match: (p: string) => p === '/dashboard' },
+  { href: '/journal', label: 'Journal', glyph: '≡', match: (p: string) => p === '/journal' || p === '/journal/new' },
+  { href: '/journal', label: 'Trade Detail', glyph: '⊞', match: (p: string) => /^\/journal\/[^/]+$/.test(p) && p !== '/journal/new' },
+  { href: '/weekly', label: 'Weekly Review', glyph: '▤', match: (p: string) => p.startsWith('/weekly') },
 ]
 
 interface SidebarProps {
@@ -64,11 +65,11 @@ export function Sidebar({ onClose }: SidebarProps) {
         Journal
       </Link>
 
-      {navItems.map(({ href, label, glyph }) => {
-        const active = pathname === href || pathname.startsWith(href + '/')
+      {navItems.map(({ href, label, glyph, match }) => {
+        const active = match(pathname)
         return (
           <Link
-            key={href}
+            key={label}
             href={href}
             onClick={onClose}
             style={{

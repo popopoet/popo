@@ -18,10 +18,11 @@ interface TopbarProps {
 export function Topbar({ onMenuClick }: TopbarProps) {
   const pathname = usePathname()
 
+  const isTradeDetail = /^\/journal\/[^/]+$/.test(pathname) && pathname !== '/journal/new'
   const matchedKey = Object.keys(crumbs).find(
     (k) => pathname === k || pathname.startsWith(k + '/')
   )
-  const breadcrumb = matchedKey ? crumbs[matchedKey] : ''
+  const breadcrumb = isTradeDetail ? 'Trade Detail' : matchedKey ? crumbs[matchedKey] : ''
 
   return (
     <header
