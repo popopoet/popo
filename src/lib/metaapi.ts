@@ -1,8 +1,8 @@
 import type { Direction, Session } from '@prisma/client'
 import { calcSession, calcPips } from './utils'
 
-const BASE = 'https://mt-client-api-v1.london.agiliumtrade.ai'
-const MGMT = 'https://trading-account-management-api.agiliumtrade.ai'
+const MGMT = 'https://mt-provisioning-api-v1.agiliumtrade.agiliumtrade.ai'
+const CLIENT_DOMAIN = 'agiliumtrade.ai'
 const TOKEN = process.env.METAAPI_TOKEN!
 const ACCOUNT_ID = process.env.METAAPI_ACCOUNT_ID!
 
@@ -23,13 +23,28 @@ async function mgmtFetch(path: string, method = 'GET', body?: object) {
   return res.json()
 }
 
-async function apiFetch(path: string) {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { 'auth-token': TOKEN },
-  })
+interface AccountInfo {
+  _id: string
+  state: string
+  connectionStatus: string
+  region?: string
+  accountReplicas?: Array<{ region: string; state?: string }>
+}
+
+async function getAccountInfo(): Promise<AccountInfo> {
+  return mgmtFetch(`/users/current/accounts/${ACCOUNT_ID}`)
+}
+
+async function clientFetch(path: string) {
+  // Region is required to build the client API URL.
+  const info = await getAccountInfo()
+  const region = info.region ?? info.accountReplicas?.[0]?.region ?? 'new-york'
+  const url = `https://mt-client-api-v1.${region}.${CLIENT_DOMAIN}${path}`
+
+  const res = await fetch(url, { headers: { 'auth-token': TOKEN } })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`MetaApi ${path}: ${res.status} ${text}`)
+    throw new Error(`MetaApi CLIENT ${path} (region=${region}): ${res.status} ${text}`)
   }
   return res.json()
 }
@@ -42,18 +57,23 @@ export async function undeployAccount(): Promise<void> {
   await mgmtFetch(`/users/current/accounts/${ACCOUNT_ID}/undeploy`, 'POST')
 }
 
-export async function getAccountState(): Promise<{ state: string; connectionStatus: string }> {
-  const data = await mgmtFetch(`/users/current/accounts/${ACCOUNT_ID}`)
+export async function getAccountState(): Promise<{
+  state: string
+  connectionStatus: string
+  region?: string
+}> {
+  const info = await getAccountInfo()
   return {
-    state: data.state ?? 'UNKNOWN',
-    connectionStatus: data.connectionStatus ?? 'DISCONNECTED',
+    state: info.state ?? 'UNKNOWN',
+    connectionStatus: info.connectionStatus ?? 'DISCONNECTED',
+    region: info.region ?? info.accountReplicas?.[0]?.region,
   }
 }
 
 interface RawDeal {
   id: string
-  type: string          // DEAL_TYPE_BUY | DEAL_TYPE_SELL
-  entryType: string     // DEAL_ENTRY_IN | DEAL_ENTRY_OUT | DEAL_ENTRY_INOUT
+  type: string
+  entryType: string
   symbol: string
   volume: number
   price: number
@@ -89,11 +109,10 @@ export async function fetchHistoryDeals(from: Date, to: Date): Promise<Partial<N
   const fromISO = from.toISOString()
   const toISO = to.toISOString()
 
-  const deals: RawDeal[] = await apiFetch(
+  const deals: RawDeal[] = await clientFetch(
     `/users/current/accounts/${ACCOUNT_ID}/history-deals/time/${fromISO}/${toISO}`
   )
 
-  // Only process XAUUSD trades
   const xauDeals = deals.filter(
     (d) =>
       d.symbol?.includes('XAU') ||
@@ -101,7 +120,6 @@ export async function fetchHistoryDeals(from: Date, to: Date): Promise<Partial<N
       d.symbol === 'XAUUSD'
   )
 
-  // Group by positionId to pair entry (IN) and exit (OUT) deals
   const byPosition: Record<string, { in?: RawDeal; out?: RawDeal }> = {}
 
   for (const deal of xauDeals) {
@@ -119,7 +137,7 @@ export async function fetchHistoryDeals(from: Date, to: Date): Promise<Partial<N
 
   for (const [posId, pair] of Object.entries(byPosition)) {
     const exitDeal = pair.out
-    if (!exitDeal) continue // skip open positions
+    if (!exitDeal) continue
 
     const entryDeal = pair.in
     const direction: Direction =
@@ -135,7 +153,6 @@ export async function fetchHistoryDeals(from: Date, to: Date): Promise<Partial<N
     const entryAt = entryDeal ? new Date(entryDeal.time) : new Date(exitDeal.time)
     const exitAt = new Date(exitDeal.time)
     const session = calcSession(entryAt)
-
     const pips = calcPips(entryPrice, exitPrice, direction)
 
     let tradeResult: 'WIN' | 'LOSS' | 'BREAKEVEN'
