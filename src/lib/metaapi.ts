@@ -35,10 +35,14 @@ async function getAccountInfo(): Promise<AccountInfo> {
   return mgmtFetch(`/users/current/accounts/${ACCOUNT_ID}`)
 }
 
+let _cachedRegion: string | null = null
+
 async function clientFetch(path: string) {
-  // Region is required to build the client API URL.
-  const info = await getAccountInfo()
-  const region = info.region ?? info.accountReplicas?.[0]?.region ?? 'new-york'
+  if (!_cachedRegion) {
+    const info = await getAccountInfo()
+    _cachedRegion = info.region ?? info.accountReplicas?.[0]?.region ?? 'new-york'
+  }
+  const region = _cachedRegion
   const url = `https://mt-client-api-v1.${region}.${CLIENT_DOMAIN}${path}`
 
   const res = await fetch(url, { headers: { 'auth-token': TOKEN } })
@@ -109,10 +113,15 @@ export async function fetchHistoryDeals(from: Date, to: Date): Promise<Partial<N
   const fromISO = from.toISOString()
   const toISO = to.toISOString()
 
-  const deals: RawDeal[] = await clientFetch(
+  const raw = await clientFetch(
     `/users/current/accounts/${ACCOUNT_ID}/history-deals/time/${fromISO}/${toISO}`
   )
 
+  if (!Array.isArray(raw)) {
+    throw new Error(`history-deals returned non-array: ${JSON.stringify(raw)}`)
+  }
+
+  const deals: RawDeal[] = raw
   const xauDeals = deals.filter(
     (d) =>
       d.symbol?.includes('XAU') ||

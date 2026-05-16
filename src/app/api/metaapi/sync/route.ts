@@ -3,6 +3,9 @@ import { fetchHistoryDeals } from '@/lib/metaapi'
 import { prisma } from '@/lib/prisma'
 import type { Direction, Session, Result, Grade } from '@prisma/client'
 
+export const dynamic = 'force-dynamic'
+export const maxDuration = 60
+
 export async function POST() {
   try {
     const to = new Date()
