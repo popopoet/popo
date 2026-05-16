@@ -16,7 +16,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
 
     await prisma.trade.update({
       where: { id },
-      data: { aiReview: review },
+      data: { aiReview: review as unknown as Record<string, string> },
     })
 
     return NextResponse.json(review)
