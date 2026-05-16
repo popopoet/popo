@@ -74,7 +74,7 @@ export default async function DashboardPage({
       where: from ? { entryAt: { gte: from } } : undefined,
       orderBy: { entryAt: 'asc' },
     }),
-    prisma.trade.findMany({ select: { pl: true } }),
+    prisma.trade.findMany({ where: { result: { not: 'OPEN' } }, select: { pl: true } }),
     prisma.withdrawal.findMany({ orderBy: { date: 'asc' } }),
     getAccountBalance().catch(() => null),
   ])
@@ -86,18 +86,20 @@ export default async function DashboardPage({
   const netPL = closed.reduce((s, t) => s + t.pl, 0)
   const netPips = closed.reduce((s, t) => s + t.pips, 0)
 
-  const allTimePL = allTrades.reduce((s, t) => s + t.pl, 0)
-  const totalWithdrawn = withdrawals.reduce((s, w) => s + w.amount, 0)
-
   const currentBalance = liveBalance?.balance ?? null
   const currency = liveBalance?.currency === 'USD' ? '$' : (liveBalance?.currency ?? '$')
-  const startingBalance = currentBalance !== null
-    ? currentBalance - allTimePL + totalWithdrawn
-    : 0
 
   const periodWithdrawals = withdrawals.filter(
     (w) => !from || new Date(w.date) >= from,
   )
+  const periodWithdrawnAmount = periodWithdrawals.reduce((s, w) => s + w.amount, 0)
+
+  // Anchor the curve so it always ends at live balance:
+  // start = currentBalance - periodNetPL + periodWithdrawals
+  const startingBalance = currentBalance !== null
+    ? currentBalance - netPL + periodWithdrawnAmount
+    : 0
+
   const equityCurve = buildBalanceCurve(closed, periodWithdrawals, startingBalance)
 
   const sessionGroups: Record<string, number> = { LONDON: 0, NEW_YORK: 0, ASIA: 0 }
