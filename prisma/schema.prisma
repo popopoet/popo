@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Trade {
@@ -36,7 +35,27 @@ model Trade {
   @@index([sourceId])
 }
 
-enum Direction { BUY SELL }
-enum Session  { LONDON NEW_YORK ASIA }
-enum Result   { WIN LOSS BREAKEVEN OPEN }
-enum Grade    { A_PLUS A B C }
+enum Direction {
+  BUY
+  SELL
+}
+
+enum Session {
+  LONDON
+  NEW_YORK
+  ASIA
+}
+
+enum Result {
+  WIN
+  LOSS
+  BREAKEVEN
+  OPEN
+}
+
+enum Grade {
+  A_PLUS
+  A
+  B
+  C
+}
