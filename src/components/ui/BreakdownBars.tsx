@@ -28,7 +28,7 @@ export function BreakdownBars({ title, items, unit = 'p' }: BreakdownBarsProps) 
         {items.map((item, i) => {
           const pct = Math.abs(item.value) / max
           const positive = item.value >= 0
-          const fillColor = item.color || (positive ? 'var(--green)' : 'var(--red)')
+          const stripeColor = positive ? 'var(--green)' : 'var(--red)'
           return (
             <div
               key={i}
@@ -67,11 +67,10 @@ export function BreakdownBars({ title, items, unit = 'p' }: BreakdownBarsProps) 
                     top: 0,
                     bottom: 0,
                     left: 0,
-                    width: `${Math.max(pct * 100, 4)}%`,
-                    background: fillColor,
-                    opacity: 0.7,
-                    borderRadius: 99,
-                    transition: 'width 0.4s ease',
+                    right: `${(1 - pct) * 100}%`,
+                    background: `repeating-linear-gradient(90deg, ${stripeColor} 0 4px, transparent 4px 8px)`,
+                    opacity: 0.75,
+                    transition: 'right 0.4s ease',
                   }}
                 />
               </div>

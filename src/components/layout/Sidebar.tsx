@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', glyph: '◧', match: (p: string) => p === '/dashboard' },
   { href: '/journal', label: 'Journal', glyph: '≡', match: (p: string) => p === '/journal' || p === '/journal/new' },
-  { href: '/journal', label: 'Trade Detail', glyph: '⊞', match: (p: string) => /^\/journal\/[^/]+$/.test(p) && p !== '/journal/new' },
+  { href: '/journal', label: 'Trade Detail', glyph: '◇', match: (p: string) => /^\/journal\/[^/]+$/.test(p) && p !== '/journal/new' },
   { href: '/weekly', label: 'Weekly Review', glyph: '▤', match: (p: string) => p.startsWith('/weekly') },
 ]
 

@@ -65,7 +65,7 @@ export function EquityCurveChart({ data }: EquityCurveChartProps) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
+    <ResponsiveContainer width="100%" height={240}>
       <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
         <XAxis
           dataKey="date"

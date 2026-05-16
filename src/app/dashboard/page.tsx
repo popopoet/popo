@@ -123,19 +123,8 @@ export default async function DashboardPage({
                 marginTop: 4,
               }}
             >
-              {trades.length} trades · {wins.length} wins · {losses.length} losses · {periods.find((p) => p.key === period)?.label}
+              {trades.length} trades · {wins.length}W · {losses.length}L · {periods.find((p) => p.key === period)?.label}
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {periods.map((p) => (
-              <Link
-                key={p.key}
-                href={`/dashboard?period=${p.key}`}
-                className={`pill ${period === p.key ? 'active' : ''}`}
-              >
-                {p.label}
-              </Link>
-            ))}
           </div>
         </div>
 
@@ -160,14 +149,24 @@ export default async function DashboardPage({
               <h4 style={{ fontFamily: 'var(--hand)', fontSize: 15, fontWeight: 700 }}>
                 Equity curve
               </h4>
-              <span className="label">Cumulative pips</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {periods.map((p) => (
+                  <Link
+                    key={p.key}
+                    href={`/dashboard?period=${p.key}`}
+                    className={`pill ${period === p.key ? 'active' : ''}`}
+                  >
+                    {p.label}
+                  </Link>
+                ))}
+              </div>
             </div>
             {equityCurve.length > 0 ? (
               <EquityCurveChart data={equityCurve} />
             ) : (
               <div
                 style={{
-                  height: 240,
+                  height: 260,
                   display: 'grid',
                   placeItems: 'center',
                   color: 'var(--ink-faint)',
@@ -187,23 +186,23 @@ export default async function DashboardPage({
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div className="kpi">
-              <span className="label">Net P/L</span>
+              <span className="label">Net pips</span>
               <span
                 style={{
                   fontFamily: 'var(--mono)',
                   fontSize: 34,
                   fontWeight: 500,
-                  color: netPL >= 0 ? 'var(--green)' : 'var(--red)',
+                  color: netPips >= 0 ? 'var(--green)' : 'var(--red)',
                   lineHeight: 1.1,
                 }}
               >
-                {formatPL(netPL)}
+                {formatPips(netPips)}
               </span>
               <span
                 className="delta"
-                style={{ color: netPips >= 0 ? 'var(--green)' : 'var(--red)' }}
+                style={{ color: netPL >= 0 ? 'var(--green)' : 'var(--red)' }}
               >
-                {formatPips(netPips)} pips · {period === 'all' ? 'all time' : period.toUpperCase()}
+                {formatPL(netPL)} · {period === 'all' ? 'all time' : period.toUpperCase()}
               </span>
             </div>
 
@@ -211,9 +210,9 @@ export default async function DashboardPage({
               <KpiCard label="Win Rate" value={`${winRate}%`} sub={`${wins.length}/${closed.length}`} />
               <KpiCard label="Trades" value={String(trades.length)} sub={`${closed.length} closed`} />
               <KpiCard
-                label="Net Pips"
-                value={formatPips(netPips)}
-                valueColor={netPips >= 0 ? 'var(--green)' : 'var(--red)'}
+                label="Net P/L"
+                value={formatPL(netPL)}
+                valueColor={netPL >= 0 ? 'var(--green)' : 'var(--red)'}
               />
               <KpiCard label="This Week" value={String(thisWeekCount)} sub="trades" />
             </div>
