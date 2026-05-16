@@ -13,38 +13,45 @@ function maskUrl(url: string | undefined): string {
   }
 }
 
-export async function GET() {
-  const dbUrl = process.env.DATABASE_URL
-  const result: Record<string, unknown> = {
-    DATABASE_URL: maskUrl(dbUrl),
-    DATABASE_POSTGRES_URL: maskUrl(process.env.DATABASE_POSTGRES_URL),
-    DATABASE_POSTGRES_PRISMA_URL: maskUrl(process.env.DATABASE_POSTGRES_PRISMA_URL),
-    DATABASE_POSTGRES_URL_NON_POOLING: maskUrl(process.env.DATABASE_POSTGRES_URL_NON_POOLING),
-    DATABASE_POSTGRES_PASSWORD_last4: process.env.DATABASE_POSTGRES_PASSWORD?.slice(-4) ?? 'NOT SET',
-    NODE_ENV: process.env.NODE_ENV,
-  }
-
-  if (!dbUrl) {
-    return NextResponse.json({ ...result, connectionTest: 'SKIPPED - no DATABASE_URL' })
-  }
-
+async function testConnection(url: string | undefined) {
+  if (!url) return { status: 'SKIPPED - not set' }
   const client = new Client({
-    connectionString: dbUrl,
+    connectionString: url,
     ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 5000,
   })
-
   try {
     await client.connect()
-    const r = await client.query('SELECT current_user, current_database()')
+    const r = await client.query('SELECT current_user')
     await client.end()
-    return NextResponse.json({ ...result, connectionTest: 'OK', queryResult: r.rows[0] })
+    return { status: 'OK', user: r.rows[0].current_user }
   } catch (e) {
-    return NextResponse.json({
-      ...result,
-      connectionTest: 'FAILED',
+    return {
+      status: 'FAILED',
       error: String(e),
-      errorCode: (e as { code?: string }).code,
-    })
+      code: (e as { code?: string }).code,
+    }
   }
+}
+
+export async function GET() {
+  const urls = {
+    DATABASE_URL: process.env.DATABASE_URL,
+    DATABASE_POSTGRES_URL: process.env.DATABASE_POSTGRES_URL,
+    DATABASE_POSTGRES_PRISMA_URL: process.env.DATABASE_POSTGRES_PRISMA_URL,
+    DATABASE_POSTGRES_URL_NON_POOLING: process.env.DATABASE_POSTGRES_URL_NON_POOLING,
+  }
+
+  const masked: Record<string, string> = {}
+  const tests: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(urls)) {
+    masked[k] = maskUrl(v)
+    tests[k] = await testConnection(v)
+  }
+
+  return NextResponse.json({
+    masked,
+    tests,
+    NODE_ENV: process.env.NODE_ENV,
+  })
 }

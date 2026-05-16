@@ -6,11 +6,17 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/xaujournal'
+  const connectionString =
+    process.env.DATABASE_POSTGRES_PRISMA_URL ??
+    process.env.DATABASE_URL ??
+    'postgresql://localhost:5432/xaujournal'
+  const hasRemote = Boolean(
+    process.env.DATABASE_POSTGRES_PRISMA_URL || process.env.DATABASE_URL
+  )
   const adapter = new PrismaPg({
     connectionString,
     max: 1,
-    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+    ssl: hasRemote ? { rejectUnauthorized: false } : false,
   })
   return new PrismaClient({ adapter })
 }
