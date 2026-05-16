@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { generateWeeklyInsight } from '@/lib/claude'
 import { getWeekRange } from '@/lib/utils'
+import type { Trade } from '@prisma/client'
 
 interface RouteContext {
   params: Promise<{ week: string }>
@@ -24,9 +25,9 @@ export async function POST(_request: Request, { params }: RouteContext) {
       where: { entryAt: { gte: fourWeeksAgo, lt: start } },
     })
 
-    const wins = recentTrades.filter((t) => t.result === 'WIN').length
-    const losses = recentTrades.filter((t) => t.result === 'LOSS').length
-    const totalPips = recentTrades.reduce((s, t) => s + t.pips, 0)
+    const wins = recentTrades.filter((t: Trade) => t.result === 'WIN').length
+    const losses = recentTrades.filter((t: Trade) => t.result === 'LOSS').length
+    const totalPips = recentTrades.reduce((s: number, t: Trade) => s + t.pips, 0)
 
     const recentSummary = {
       period: 'last 4 weeks',
