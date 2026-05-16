@@ -1,78 +1,93 @@
 'use client'
 
+import { ReactNode } from 'react'
+
 interface BarItem {
-  label: string
+  label: string | ReactNode
   value: number
   color?: string
 }
 
 interface BreakdownBarsProps {
-  title: string
+  title?: string
   items: BarItem[]
+  unit?: string
 }
 
-export function BreakdownBars({ title, items }: BreakdownBarsProps) {
+export function BreakdownBars({ title, items, unit = 'p' }: BreakdownBarsProps) {
   const max = Math.max(...items.map((i) => Math.abs(i.value)), 1)
 
   return (
     <div>
-      <div
-        style={{
-          fontSize: 11,
-          fontFamily: 'IBM Plex Mono, monospace',
-          color: 'var(--ink-faint)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          marginBottom: 12,
-        }}
-      >
-        {title}
-      </div>
+      {title && (
+        <h4 style={{ fontFamily: 'var(--hand)', fontWeight: 700, fontSize: 15, marginBottom: 12 }}>
+          {title}
+        </h4>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {items.map((item) => {
+        {items.map((item, i) => {
           const pct = Math.abs(item.value) / max
-          const color = item.color || (item.value >= 0 ? 'var(--green)' : 'var(--red)')
+          const positive = item.value >= 0
+          const fillColor = item.color || (positive ? 'var(--green)' : 'var(--red)')
           return (
-            <div key={item.label}>
-              <div
+            <div
+              key={i}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '90px 1fr 60px',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <span
                 style={{
+                  fontFamily: 'var(--hand)',
+                  fontSize: 14,
+                  color: 'var(--ink-dim)',
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  marginBottom: 4,
-                  fontSize: 12,
+                  alignItems: 'center',
+                  gap: 6,
                 }}
               >
-                <span style={{ color: 'var(--ink-dim)', fontFamily: 'Inter, sans-serif' }}>
-                  {item.label}
-                </span>
-                <span
-                  style={{
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    fontWeight: 600,
-                    color,
-                  }}
-                >
-                  {item.value >= 0 ? '+' : ''}{item.value.toFixed(0)}
-                </span>
-              </div>
+                {item.label}
+              </span>
               <div
                 style={{
-                  height: 6,
+                  height: 10,
+                  borderRadius: 99,
                   background: 'var(--surface-2)',
-                  borderRadius: 3,
+                  border: '1px solid var(--line)',
+                  position: 'relative',
                   overflow: 'hidden',
                 }}
               >
                 <div
                   style={{
-                    height: '100%',
-                    width: `${pct * 100}%`,
-                    background: color,
-                    borderRadius: 3,
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    width: `${Math.max(pct * 100, 4)}%`,
+                    background: fillColor,
+                    opacity: 0.7,
+                    borderRadius: 99,
                     transition: 'width 0.4s ease',
                   }}
                 />
               </div>
+              <span
+                style={{
+                  fontFamily: 'var(--mono)',
+                  fontSize: 12,
+                  textAlign: 'right',
+                  color: positive ? 'var(--green)' : 'var(--red)',
+                  fontWeight: 500,
+                }}
+              >
+                {positive ? '+' : ''}
+                {Math.round(item.value)}
+                {unit}
+              </span>
             </div>
           )
         })}

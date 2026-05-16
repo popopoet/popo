@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import type { WeeklyInsight } from '@/lib/claude'
 
 interface AiInsightBlockProps {
@@ -32,10 +32,11 @@ export function AiInsightBlock({ week, initialInsight }: AiInsightBlockProps) {
   return (
     <div
       style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--line)',
+        border: '1px solid var(--line-strong)',
         borderRadius: 8,
-        padding: 16,
+        background:
+          'linear-gradient(180deg, rgba(125,155,194,0.07), transparent 60%), var(--surface)',
+        padding: 14,
       }}
     >
       <div
@@ -43,41 +44,45 @@ export function AiInsightBlock({ week, initialInsight }: AiInsightBlockProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: 14,
+          marginBottom: 8,
         }}
       >
-        <div
+        <h4
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
-            fontFamily: 'Kalam, cursive',
-            fontSize: 14,
+            gap: 8,
+            fontFamily: 'var(--hand)',
             fontWeight: 700,
-            color: 'var(--amber)',
+            fontSize: 15,
           }}
         >
-          <Sparkles size={15} />
-          AI Pattern Analysis
-        </div>
+          <span
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 6,
+              border: '1px solid var(--blue)',
+              color: 'var(--blue)',
+              fontFamily: 'var(--mono)',
+              fontSize: 10,
+              display: 'grid',
+              placeItems: 'center',
+              fontWeight: 600,
+            }}
+          >
+            AI
+          </span>
+          Claude&apos;s pattern analysis
+        </h4>
         <button
           onClick={handleAnalyze}
           disabled={loading}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '5px 10px',
-            borderRadius: 5,
-            border: '1px solid var(--line)',
-            background: 'var(--surface-2)',
-            color: 'var(--ink-dim)',
-            fontSize: 12,
-            fontFamily: 'Kalam, cursive',
-          }}
+          className="pill"
+          style={{ cursor: loading ? 'wait' : 'pointer' }}
         >
           <RefreshCw size={11} style={loading ? { animation: 'spin 0.8s linear infinite' } : {}} />
-          {loading ? 'Analyzing...' : insight ? 'Refresh' : 'Analyze Week'}
+          {loading ? 'Analyzing' : insight ? 'Refresh' : 'Analyze'}
         </button>
       </div>
 
@@ -86,76 +91,30 @@ export function AiInsightBlock({ week, initialInsight }: AiInsightBlockProps) {
       )}
 
       {!insight && !loading && (
-        <p
-          style={{
-            color: 'var(--ink-faint)',
-            fontSize: 13,
-            fontFamily: 'Inter, sans-serif',
-          }}
-        >
-          Click &quot;Analyze Week&quot; to get AI insights on your weekly performance.
+        <p style={{ color: 'var(--ink-faint)', fontSize: 13, padding: '8px 0' }}>
+          Click <em>Analyze</em> to get Claude&apos;s read on what worked, what didn&apos;t, and
+          the lesson for next week.
         </p>
       )}
 
       {insight && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <InsightSection
-            label="What Worked"
-            text={insight.what_worked}
-            color="var(--green)"
-          />
-          <InsightSection
-            label="Repeating Mistake"
-            text={insight.repeating_mistake}
-            color="var(--red)"
-          />
-          <InsightSection
-            label="Lesson for Next Week"
-            text={insight.lesson}
-            color="var(--amber)"
-          />
-        </div>
+        <>
+          <Section label="What worked" text={insight.what_worked} />
+          <Section label="Repeating mistake" text={insight.repeating_mistake} />
+          <Section label="Lesson" text={insight.lesson} />
+        </>
       )}
     </div>
   )
 }
 
-function InsightSection({
-  label,
-  text,
-  color,
-}: {
-  label: string
-  text: string
-  color: string
-}) {
+function Section({ label, text }: { label: string; text: string }) {
   return (
-    <div
-      style={{
-        paddingLeft: 10,
-        borderLeft: `2px solid ${color}`,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10,
-          fontFamily: 'IBM Plex Mono, monospace',
-          color: 'var(--ink-faint)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          marginBottom: 4,
-        }}
-      >
+    <div style={{ padding: '10px 0', borderTop: '1px solid var(--line)' }}>
+      <div className="label" style={{ marginBottom: 6 }}>
         {label}
       </div>
-      <p
-        style={{
-          fontSize: 13,
-          color: 'var(--ink)',
-          fontFamily: 'Inter, sans-serif',
-          lineHeight: 1.6,
-        }}
-      >
+      <p style={{ margin: 0, color: 'var(--ink-dim)', fontSize: 13, lineHeight: 1.6 }}>
         {text}
       </p>
     </div>

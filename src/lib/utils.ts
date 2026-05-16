@@ -27,15 +27,20 @@ export function calcSession(date: Date): Session {
 }
 
 export interface ConfluenceData {
-  trendAlignment?: boolean
-  keyLevel?: boolean
-  candlePattern?: boolean
-  riskReward?: boolean
-  [key: string]: boolean | undefined
+  sndFresh?: boolean
+  sndTimeframe?: string
+  bosChoCh?: boolean
+  bosTimeframe?: string
+  volume?: boolean
+  volumeNote?: string
+  fundamental?: boolean
+  fundamentalNote?: string
+  [key: string]: boolean | string | undefined
 }
 
 export function calcGrade(confluence: ConfluenceData): Grade {
-  const count = Object.values(confluence).filter(Boolean).length
+  const checks = ['sndFresh', 'bosChoCh', 'volume', 'fundamental']
+  const count = checks.filter((k) => Boolean(confluence[k])).length
   if (count >= 4) return 'A_PLUS'
   if (count === 3) return 'A'
   if (count === 2) return 'B'

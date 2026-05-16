@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import type { TradeReview } from '@/lib/claude'
 
 interface AiReviewBlockProps {
@@ -32,10 +32,11 @@ export function AiReviewBlock({ tradeId, initialReview }: AiReviewBlockProps) {
   return (
     <div
       style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--line)',
+        border: '1px solid var(--line-strong)',
         borderRadius: 8,
-        padding: 16,
+        background:
+          'linear-gradient(180deg, rgba(125,155,194,0.07), transparent 60%), var(--surface)',
+        padding: 14,
       }}
     >
       <div
@@ -43,41 +44,45 @@ export function AiReviewBlock({ tradeId, initialReview }: AiReviewBlockProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: 14,
+          marginBottom: 8,
         }}
       >
-        <div
+        <h4
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
-            fontFamily: 'Kalam, cursive',
-            fontSize: 14,
+            gap: 8,
+            fontFamily: 'var(--hand)',
             fontWeight: 700,
-            color: 'var(--amber)',
+            fontSize: 15,
           }}
         >
-          <Sparkles size={15} />
-          AI Review
-        </div>
+          <span
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 6,
+              border: '1px solid var(--blue)',
+              color: 'var(--blue)',
+              fontFamily: 'var(--mono)',
+              fontSize: 10,
+              display: 'grid',
+              placeItems: 'center',
+              fontWeight: 600,
+            }}
+          >
+            AI
+          </span>
+          Claude&apos;s review
+        </h4>
         <button
           onClick={handleAnalyze}
           disabled={loading}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '5px 10px',
-            borderRadius: 5,
-            border: '1px solid var(--line)',
-            background: 'var(--surface-2)',
-            color: 'var(--ink-dim)',
-            fontSize: 12,
-            fontFamily: 'Kalam, cursive',
-          }}
+          className="pill"
+          style={{ cursor: loading ? 'wait' : 'pointer' }}
         >
           <RefreshCw size={11} style={loading ? { animation: 'spin 0.8s linear infinite' } : {}} />
-          {loading ? 'Analyzing...' : review ? 'Re-analyze' : 'Analyze'}
+          {loading ? 'Analyzing' : review ? 'Re-analyze' : 'Analyze'}
         </button>
       </div>
 
@@ -86,40 +91,40 @@ export function AiReviewBlock({ tradeId, initialReview }: AiReviewBlockProps) {
       )}
 
       {!review && !loading && (
-        <p style={{ color: 'var(--ink-faint)', fontSize: 13, fontFamily: 'Inter, sans-serif' }}>
-          Click &quot;Analyze&quot; to get AI feedback on this trade.
+        <p
+          style={{
+            color: 'var(--ink-faint)',
+            fontSize: 13,
+            padding: '8px 0',
+          }}
+        >
+          No review yet. Click <em>Analyze</em> for Claude&apos;s take on quality, sizing, and psychology.
         </p>
       )}
 
       {review && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <ReviewSection label="Trade Quality" text={review.quality} />
-          <ReviewSection label="Position Sizing" text={review.sizing} />
-          <ReviewSection label="Psychology" text={review.psychology} />
-        </div>
+        <>
+          <Section label="Quality" text={review.quality} />
+          <Section label="Sizing" text={review.sizing} />
+          <Section label="Psychology" text={review.psychology} />
+        </>
       )}
     </div>
   )
 }
 
-function ReviewSection({ label, text }: { label: string; text: string }) {
+function Section({ label, text }: { label: string; text: string }) {
   return (
-    <div>
-      <div
-        style={{
-          fontSize: 10,
-          fontFamily: 'IBM Plex Mono, monospace',
-          color: 'var(--ink-faint)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          marginBottom: 4,
-        }}
-      >
+    <div
+      style={{
+        padding: '10px 0',
+        borderTop: '1px solid var(--line)',
+      }}
+    >
+      <div className="label" style={{ marginBottom: 6 }}>
         {label}
       </div>
-      <p style={{ fontSize: 13, color: 'var(--ink)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6 }}>
-        {text}
-      </p>
+      <p style={{ margin: 0, color: 'var(--ink-dim)', fontSize: 13, lineHeight: 1.6 }}>{text}</p>
     </div>
   )
 }

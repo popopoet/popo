@@ -18,7 +18,9 @@ interface TopbarProps {
 export function Topbar({ onMenuClick }: TopbarProps) {
   const pathname = usePathname()
 
-  const matchedKey = Object.keys(crumbs).find((k) => pathname === k || pathname.startsWith(k + '/'))
+  const matchedKey = Object.keys(crumbs).find(
+    (k) => pathname === k || pathname.startsWith(k + '/')
+  )
   const breadcrumb = matchedKey ? crumbs[matchedKey] : ''
 
   return (
@@ -27,47 +29,73 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        height: 52,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 20px',
-        background: 'rgba(12, 13, 16, 0.7)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        gap: 20,
+        padding: '14px 24px',
+        background: 'var(--topbar-bg)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         borderBottom: '1px solid var(--line)',
       }}
+      className="no-print"
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button
-          onClick={onMenuClick}
-          className="no-print"
-          style={{
-            display: 'none',
-            background: 'none',
-            border: 'none',
-            color: 'var(--ink-dim)',
-            padding: 4,
-          }}
-          id="menu-btn"
-        >
-          <Menu size={20} />
-        </button>
+      <button
+        onClick={onMenuClick}
+        style={{
+          display: 'none',
+          background: 'none',
+          border: 'none',
+          color: 'var(--ink-dim)',
+          padding: 4,
+        }}
+        id="menu-btn"
+      >
+        <Menu size={20} />
+      </button>
+
+      <div
+        style={{
+          fontFamily: 'var(--hand)',
+          fontSize: 20,
+          fontWeight: 700,
+          letterSpacing: '0.5px',
+          color: 'var(--ink)',
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
         <span
           style={{
-            fontFamily: 'Kalam, cursive',
-            fontSize: 14,
-            color: 'var(--ink-dim)',
+            display: 'inline-block',
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            background: 'var(--amber)',
+            marginRight: 8,
+          }}
+        />
+        XAUUSD Journal
+      </div>
+
+      {breadcrumb && (
+        <div
+          style={{
+            fontFamily: 'var(--mono)',
+            fontSize: 11,
+            color: 'var(--ink-faint)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.12em',
           }}
         >
           {breadcrumb}
-        </span>
-      </div>
+        </div>
+      )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <DeployButton />
-        <ThemeToggle />
-      </div>
+      <div style={{ flex: 1 }} />
+
+      <DeployButton />
+      <ThemeToggle />
 
       <style>{`
         @media (max-width: 768px) {

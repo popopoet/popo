@@ -6,9 +6,7 @@ import { Sun, Moon, Monitor } from 'lucide-react'
 type Theme = 'dark' | 'light' | 'system'
 
 function applyTheme(theme: Theme) {
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-  const isDark = theme === 'dark' || (theme === 'system' && prefersDark)
-  document.body.setAttribute('data-theme', isDark ? 'dark' : 'light')
+  document.body.setAttribute('data-theme', theme)
 }
 
 export function ThemeScript() {
@@ -16,13 +14,12 @@ export function ThemeScript() {
     (function() {
       try {
         var theme = localStorage.getItem('xauj.theme') || 'dark';
-        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var isDark = theme === 'dark' || (theme === 'system' && prefersDark);
-        document.body ? document.body.setAttribute('data-theme', isDark ? 'dark' : 'light') :
-          document.addEventListener('DOMContentLoaded', function() {
-            document.body.setAttribute('data-theme', isDark ? 'dark' : 'light');
-          });
-      } catch(e) {}
+        document.body
+          ? document.body.setAttribute('data-theme', theme)
+          : document.addEventListener('DOMContentLoaded', function () {
+              document.body.setAttribute('data-theme', theme);
+            });
+      } catch (e) {}
     })();
   `
   return <script dangerouslySetInnerHTML={{ __html: script }} />
@@ -42,32 +39,50 @@ export function ThemeToggle() {
     applyTheme(next)
   }
 
-  const icons: Record<Theme, React.ReactNode> = {
-    dark: <Moon size={14} />,
-    light: <Sun size={14} />,
-    system: <Monitor size={14} />,
-  }
-  const next: Record<Theme, Theme> = { dark: 'light', light: 'system', system: 'dark' }
+  const options: { key: Theme; icon: React.ReactNode; label: string }[] = [
+    { key: 'light', icon: <Sun size={12} />, label: 'Light' },
+    { key: 'dark', icon: <Moon size={12} />, label: 'Dark' },
+    { key: 'system', icon: <Monitor size={12} />, label: 'Auto' },
+  ]
 
   return (
-    <button
-      onClick={() => handleChange(next[theme])}
+    <div
       style={{
-        background: 'var(--surface-2)',
-        border: '1px solid var(--line)',
-        borderRadius: 6,
-        padding: '6px 10px',
-        color: 'var(--ink-dim)',
         display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        fontSize: 12,
-        fontFamily: 'IBM Plex Mono, monospace',
+        gap: 2,
+        padding: 3,
+        border: '1px solid var(--line)',
+        borderRadius: 8,
+        background: 'var(--surface)',
       }}
-      title={`Theme: ${theme}`}
+      role="tablist"
+      aria-label="Theme"
     >
-      {icons[theme]}
-      <span style={{ textTransform: 'capitalize' }}>{theme}</span>
-    </button>
+      {options.map((opt) => {
+        const active = theme === opt.key
+        return (
+          <button
+            key={opt.key}
+            onClick={() => handleChange(opt.key)}
+            title={opt.label}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 8px',
+              borderRadius: 5,
+              border: 'none',
+              background: active ? 'var(--surface-2)' : 'transparent',
+              color: active ? 'var(--ink)' : 'var(--ink-faint)',
+              fontFamily: 'var(--hand)',
+              fontSize: 12,
+            }}
+          >
+            {opt.icon}
+            <span>{opt.label}</span>
+          </button>
+        )
+      })}
+    </div>
   )
 }

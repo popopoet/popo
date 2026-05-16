@@ -2,11 +2,11 @@
 
 import type { ConfluenceData } from '@/lib/utils'
 
-const ITEMS: { key: keyof ConfluenceData; label: string }[] = [
-  { key: 'trendAlignment', label: 'Trend Alignment' },
-  { key: 'keyLevel', label: 'Key Level' },
-  { key: 'candlePattern', label: 'Candle Pattern' },
-  { key: 'riskReward', label: 'Risk/Reward ≥ 1:2' },
+const ITEMS: { key: keyof ConfluenceData; label: string; metaKey?: keyof ConfluenceData }[] = [
+  { key: 'sndFresh', label: 'SND zone freshness', metaKey: 'sndTimeframe' },
+  { key: 'bosChoCh', label: 'BOS / CHoCH confirmed', metaKey: 'bosTimeframe' },
+  { key: 'volume', label: 'Volume confirmation', metaKey: 'volumeNote' },
+  { key: 'fundamental', label: 'Fundamental aligned', metaKey: 'fundamentalNote' },
 ]
 
 interface ConfluenceChecklistProps {
@@ -16,75 +16,60 @@ interface ConfluenceChecklistProps {
 }
 
 export function ConfluenceChecklist({ confluence, onChange, readonly }: ConfluenceChecklistProps) {
-  const count = Object.values(confluence).filter(Boolean).length
-
   function toggle(key: keyof ConfluenceData) {
     if (readonly || !onChange) return
     onChange({ ...confluence, [key]: !confluence[key] })
   }
 
   return (
-    <div>
-      <div
-        style={{
-          fontSize: 11,
-          fontFamily: 'IBM Plex Mono, monospace',
-          color: 'var(--ink-faint)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          marginBottom: 10,
-        }}
-      >
-        Confluence ({count}/4)
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {ITEMS.map(({ key, label }) => {
-          const checked = !!confluence[key]
-          return (
-            <label
-              key={key}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {ITEMS.map(({ key, label, metaKey }) => {
+        const checked = Boolean(confluence[key])
+        const meta = metaKey ? confluence[metaKey] : undefined
+        return (
+          <div
+            key={key}
+            onClick={() => toggle(key)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '8px 10px',
+              border: '1px solid var(--line)',
+              borderRadius: 6,
+              background: 'var(--surface)',
+              cursor: readonly ? 'default' : 'pointer',
+              opacity: checked ? 1 : 0.55,
+              userSelect: 'none',
+            }}
+          >
+            <div
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                cursor: readonly ? 'default' : 'pointer',
-                userSelect: 'none',
+                width: 18,
+                height: 18,
+                borderRadius: 4,
+                border: `1px solid ${checked ? 'var(--green)' : 'var(--line-strong)'}`,
+                color: 'var(--green)',
+                display: 'grid',
+                placeItems: 'center',
+                fontFamily: 'var(--mono)',
+                fontSize: 11,
+                flexShrink: 0,
               }}
-              onClick={() => toggle(key)}
             >
-              <div
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: 4,
-                  border: `1px solid ${checked ? 'var(--green)' : 'var(--line-strong)'}`,
-                  background: checked ? 'var(--green)' : 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  transition: 'all 0.15s',
-                }}
-              >
-                {checked && (
-                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                    <path d="M1 4L3.5 6.5L9 1" stroke="#0c0d10" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
+              {checked && '✓'}
+            </div>
+            <div style={{ fontFamily: 'var(--hand)', fontSize: 15, flex: 1, color: 'var(--ink)' }}>
+              {label}
+            </div>
+            {meta !== undefined && meta !== '' && meta !== null && (
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-faint)' }}>
+                {String(meta)}
               </div>
-              <span
-                style={{
-                  fontSize: 13,
-                  fontFamily: 'Inter, sans-serif',
-                  color: checked ? 'var(--ink)' : 'var(--ink-dim)',
-                }}
-              >
-                {label}
-              </span>
-            </label>
-          )
-        })}
-      </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

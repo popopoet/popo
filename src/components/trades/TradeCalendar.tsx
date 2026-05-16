@@ -1,43 +1,33 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
 import type { Trade } from '@prisma/client'
-import { ResultPill } from '@/components/ui/ResultPill'
-import { formatPips } from '@/lib/utils'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { formatPips, getISOWeek } from '@/lib/utils'
+import { GradeBadge } from '@/components/ui/GradeBadge'
 
 interface TradeCalendarProps {
   trades: Trade[]
 }
 
-function getMonthDays(year: number, month: number) {
-  const days: Date[] = []
-  const first = new Date(year, month, 1)
-  const last = new Date(year, month + 1, 0)
-
-  let startDow = first.getDay()
-  startDow = startDow === 0 ? 6 : startDow - 1
-
-  for (let i = 0; i < startDow; i++) {
-    const d = new Date(year, month, -startDow + i + 1)
-    days.push(d)
-  }
-  for (let d = 1; d <= last.getDate(); d++) {
-    days.push(new Date(year, month, d))
-  }
-  const remaining = 7 - (days.length % 7)
-  if (remaining < 7) {
-    for (let i = 1; i <= remaining; i++) {
-      days.push(new Date(year, month + 1, i))
-    }
-  }
-  return days
+function getMondayOfWeek(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diff)
+  d.setHours(0, 0, 0, 0)
+  return d
 }
 
 export function TradeCalendar({ trades }: TradeCalendarProps) {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth()
-  const days = getMonthDays(year, month)
+  const [weekStart, setWeekStart] = useState<Date>(() => getMondayOfWeek(new Date()))
+
+  const weekDays = Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(weekStart)
+    d.setDate(d.getDate() + i)
+    return d
+  })
 
   const tradesByDay: Record<string, Trade[]> = {}
   for (const trade of trades) {
@@ -47,44 +37,63 @@ export function TradeCalendar({ trades }: TradeCalendarProps) {
     tradesByDay[key].push(trade)
   }
 
-  const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-  const dayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  function shiftWeek(days: number) {
+    const d = new Date(weekStart)
+    d.setDate(d.getDate() + days)
+    setWeekStart(d)
+  }
+
+  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+  const isoWeek = getISOWeek(weekStart)
 
   return (
     <div>
       <div
         style={{
-          fontFamily: 'Kalam, cursive',
-          fontSize: 18,
-          fontWeight: 700,
-          color: 'var(--ink)',
-          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 12,
         }}
       >
-        {monthName}
+        <h4 style={{ fontFamily: 'var(--hand)', fontSize: 16, fontWeight: 700 }}>
+          Week of{' '}
+          {weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
+          {weekDays[4].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        </h4>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <button onClick={() => shiftWeek(-7)} className="pill" aria-label="Previous week">
+            <ChevronLeft size={12} />
+          </button>
+          <span className="pill active">{isoWeek}</span>
+          <button onClick={() => shiftWeek(7)} className="pill" aria-label="Next week">
+            <ChevronRight size={12} />
+          </button>
+        </div>
       </div>
 
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: 2,
-          marginBottom: 2,
+          gridTemplateColumns: 'repeat(5, 1fr)',
+          gap: 8,
+          paddingBottom: 8,
+          borderBottom: '1px solid var(--line)',
+          marginBottom: 8,
         }}
       >
-        {dayHeaders.map((d) => (
+        {weekDays.map((d, i) => (
           <div
-            key={d}
+            key={i}
             style={{
-              padding: '4px 8px',
-              textAlign: 'center',
-              fontFamily: 'IBM Plex Mono, monospace',
-              fontSize: 11,
+              fontFamily: 'var(--mono)',
+              fontSize: 10,
+              letterSpacing: '0.12em',
               color: 'var(--ink-faint)',
               textTransform: 'uppercase',
             }}
           >
-            {d}
+            {dayNames[i]} · {d.getDate()}
           </div>
         ))}
       </div>
@@ -92,44 +101,45 @@ export function TradeCalendar({ trades }: TradeCalendarProps) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: 2,
+          gridTemplateColumns: 'repeat(5, 1fr)',
+          gap: 8,
         }}
       >
-        {days.map((day, idx) => {
-          const isCurrentMonth = day.getMonth() === month
+        {weekDays.map((day, i) => {
           const key = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`
           const dayTrades = tradesByDay[key] || []
-          const isToday =
-            day.getDate() === now.getDate() &&
-            day.getMonth() === now.getMonth() &&
-            day.getFullYear() === now.getFullYear()
-
           return (
             <div
-              key={idx}
+              key={i}
               style={{
-                minHeight: 80,
-                background: isCurrentMonth ? 'var(--surface)' : 'var(--bg-2)',
-                border: `1px solid ${isToday ? 'var(--amber)' : 'var(--line)'}`,
+                minHeight: 110,
+                border: '1px solid var(--line)',
                 borderRadius: 6,
-                padding: '6px 6px',
-                opacity: isCurrentMonth ? 1 : 0.4,
+                padding: 8,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                background: 'var(--surface)',
               }}
             >
-              <div
-                style={{
-                  fontFamily: 'IBM Plex Mono, monospace',
-                  fontSize: 11,
-                  color: isToday ? 'var(--amber)' : 'var(--ink-faint)',
-                  marginBottom: 4,
-                  fontWeight: isToday ? 700 : 400,
-                }}
-              >
-                {day.getDate()}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {dayTrades.map((trade) => (
+              {dayTrades.length === 0 && (
+                <span
+                  style={{
+                    fontFamily: 'var(--mono)',
+                    fontSize: 10,
+                    color: 'var(--ink-faint)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                  }}
+                >
+                  —
+                </span>
+              )}
+              {dayTrades.map((trade) => {
+                const win = trade.result === 'WIN'
+                const loss = trade.result === 'LOSS'
+                const color = win ? 'var(--green)' : loss ? 'var(--red)' : 'var(--ink-dim)'
+                return (
                   <Link
                     key={trade.id}
                     href={`/journal/${trade.id}`}
@@ -137,34 +147,23 @@ export function TradeCalendar({ trades }: TradeCalendarProps) {
                   >
                     <div
                       style={{
-                        padding: '2px 4px',
-                        borderRadius: 3,
-                        background: trade.result === 'WIN'
-                          ? 'var(--green)22'
-                          : trade.result === 'LOSS'
-                          ? 'var(--red)22'
-                          : 'var(--surface-2)',
-                        border: `1px solid ${
-                          trade.result === 'WIN'
-                            ? 'var(--green)44'
-                            : trade.result === 'LOSS'
-                            ? 'var(--red)44'
-                            : 'var(--line)'
-                        }`,
-                        fontFamily: 'IBM Plex Mono, monospace',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '3px 7px',
+                        borderRadius: 99,
+                        border: `1px solid ${color}`,
+                        fontFamily: 'var(--mono)',
                         fontSize: 10,
-                        color: trade.result === 'WIN'
-                          ? 'var(--green)'
-                          : trade.result === 'LOSS'
-                          ? 'var(--red)'
-                          : 'var(--ink-dim)',
+                        color,
                       }}
                     >
-                      {trade.direction} {formatPips(trade.pips)}
+                      <GradeBadge grade={trade.grade} />
+                      <span>{formatPips(trade.pips)}</span>
                     </div>
                   </Link>
-                ))}
-              </div>
+                )
+              })}
             </div>
           )
         })}

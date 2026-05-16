@@ -4,7 +4,6 @@ import { TradeCard } from '@/components/trades/TradeCard'
 import { TradeTable } from '@/components/trades/TradeTable'
 import { TradeCalendar } from '@/components/trades/TradeCalendar'
 import { prisma } from '@/lib/prisma'
-import { Plus } from 'lucide-react'
 import type { Grade, Result } from '@prisma/client'
 
 type View = 'cards' | 'table' | 'calendar'
@@ -47,136 +46,95 @@ export default async function JournalPage({
     { value: 'calendar', label: 'Calendar' },
   ]
 
+  const viewLabel = viewOptions.find((v) => v.value === view)?.label ?? 'Cards'
+
   return (
     <AppShell>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        {/* Page head */}
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-end',
             justifyContent: 'space-between',
-            marginBottom: 20,
+            gap: 16,
+            paddingBottom: 12,
+            borderBottom: '1px solid var(--line)',
             flexWrap: 'wrap',
-            gap: 12,
           }}
         >
-          <h1
-            style={{
-              fontFamily: 'Kalam, cursive',
-              fontSize: 22,
-              fontWeight: 700,
-              color: 'var(--ink)',
-            }}
-          >
-            Journal
-          </h1>
-
-          <Link
-            href="/journal/new"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 16px',
-              borderRadius: 6,
-              background: 'var(--amber)',
-              color: '#0c0d10',
-              fontFamily: 'Kalam, cursive',
-              fontSize: 14,
-              fontWeight: 700,
-              textDecoration: 'none',
-            }}
-          >
-            <Plus size={15} />
-            New Trade
-          </Link>
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 20,
-            flexWrap: 'wrap',
-            gap: 10,
-          }}
-        >
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {filterOptions.map((opt) => (
-              <Link
-                key={opt.value}
-                href={`/journal?view=${view}&filter=${opt.value}`}
-                style={{
-                  padding: '4px 12px',
-                  borderRadius: 4,
-                  fontFamily: 'Kalam, cursive',
-                  fontSize: 13,
-                  border: '1px solid var(--line)',
-                  background: filter === opt.value ? 'var(--surface-2)' : 'transparent',
-                  color: filter === opt.value ? 'var(--amber)' : 'var(--ink-dim)',
-                  textDecoration: 'none',
-                  fontWeight: filter === opt.value ? 700 : 400,
-                }}
-              >
-                {opt.label}
-              </Link>
-            ))}
+          <div>
+            <h2 style={{ fontFamily: 'var(--hand)', fontWeight: 700, fontSize: 24 }}>Journal</h2>
+            <div
+              style={{
+                fontFamily: 'var(--mono)',
+                fontSize: 11,
+                color: 'var(--ink-faint)',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                marginTop: 4,
+              }}
+            >
+              {viewLabel} view · {trades.length} trade{trades.length !== 1 ? 's' : ''}
+            </div>
           </div>
-
-          <div
-            style={{
-              display: 'flex',
-              gap: 2,
-              border: '1px solid var(--line)',
-              borderRadius: 6,
-              overflow: 'hidden',
-            }}
-          >
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {viewOptions.map((opt) => (
               <Link
                 key={opt.value}
                 href={`/journal?view=${opt.value}&filter=${filter}`}
-                style={{
-                  padding: '5px 12px',
-                  fontFamily: 'Kalam, cursive',
-                  fontSize: 12,
-                  background: view === opt.value ? 'var(--surface-2)' : 'transparent',
-                  color: view === opt.value ? 'var(--ink)' : 'var(--ink-faint)',
-                  textDecoration: 'none',
-                }}
+                className={`pill ${view === opt.value ? 'active' : ''}`}
               >
                 {opt.label}
               </Link>
             ))}
+            <Link href="/journal/new" className="btn primary">
+              + New
+            </Link>
           </div>
         </div>
 
+        {/* Filters */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {filterOptions.map((opt) => (
+            <Link
+              key={opt.value}
+              href={`/journal?view=${view}&filter=${opt.value}`}
+              className={`pill ${filter === opt.value ? 'active' : ''}`}
+            >
+              {opt.label}
+            </Link>
+          ))}
+        </div>
+
+        {/* Empty state */}
         {trades.length === 0 && (
           <div
             style={{
               textAlign: 'center',
-              padding: '60px 20px',
-              color: 'var(--ink-faint)',
-              fontFamily: 'Inter, sans-serif',
-              fontSize: 14,
+              padding: '80px 20px',
+              border: '1px solid var(--line)',
+              borderRadius: 8,
+              background: 'var(--surface)',
             }}
           >
-            <p style={{ marginBottom: 12 }}>No trades found.</p>
-            <Link
-              href="/journal/new"
+            <p
               style={{
-                color: 'var(--amber)',
-                textDecoration: 'none',
-                fontFamily: 'Kalam, cursive',
-                fontSize: 15,
+                fontFamily: 'var(--hand)',
+                fontSize: 16,
+                color: 'var(--ink-dim)',
+                marginBottom: 12,
               }}
             >
-              Log your first trade →
+              No trades match this filter.
+            </p>
+            <Link href="/journal/new" className="btn primary">
+              Log your first trade
             </Link>
           </div>
         )}
 
+        {/* Cards view */}
         {trades.length > 0 && view === 'cards' && (
           <div
             style={{
@@ -192,28 +150,16 @@ export default async function JournalPage({
           </div>
         )}
 
+        {/* Table view */}
         {trades.length > 0 && view === 'table' && (
-          <div
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--line)',
-              borderRadius: 8,
-              overflow: 'hidden',
-            }}
-          >
+          <div className="box" style={{ padding: 0, overflow: 'hidden' }}>
             <TradeTable trades={trades} />
           </div>
         )}
 
+        {/* Calendar view */}
         {view === 'calendar' && (
-          <div
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--line)',
-              borderRadius: 8,
-              padding: 20,
-            }}
-          >
+          <div className="box">
             <TradeCalendar trades={trades} />
           </div>
         )}
@@ -221,14 +167,10 @@ export default async function JournalPage({
 
       <style>{`
         @media (max-width: 900px) {
-          .trade-card-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
+          .trade-card-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
         @media (max-width: 600px) {
-          .trade-card-grid {
-            grid-template-columns: 1fr !important;
-          }
+          .trade-card-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </AppShell>

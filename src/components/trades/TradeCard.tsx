@@ -2,33 +2,44 @@ import Link from 'next/link'
 import type { Trade } from '@prisma/client'
 import { GradeBadge } from '@/components/ui/GradeBadge'
 import { DirectionLabel } from '@/components/ui/DirectionLabel'
-import { ResultPill } from '@/components/ui/ResultPill'
-import { formatPips, formatPL, formatPrice } from '@/lib/utils'
+import { formatPips, formatPrice } from '@/lib/utils'
 
 interface TradeCardProps {
   trade: Trade
 }
 
 const sessionLabel: Record<string, string> = {
-  LONDON: 'LON',
+  LONDON: 'London',
   NEW_YORK: 'NY',
-  ASIA: 'ASIA',
+  ASIA: 'Asia',
 }
 
 export function TradeCard({ trade }: TradeCardProps) {
   const date = new Date(trade.entryAt)
   const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const timeStr = date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+  const positive = trade.pips >= 0
 
   return (
-    <Link href={`/journal/${trade.id}`} style={{ display: 'block', textDecoration: 'none' }}>
+    <Link
+      href={`/journal/${trade.id}`}
+      style={{ display: 'block', textDecoration: 'none' }}
+    >
       <div
         style={{
           background: 'var(--surface)',
           border: '1px solid var(--line)',
           borderRadius: 8,
-          padding: 14,
-          cursor: 'pointer',
+          padding: 12,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
           transition: 'border-color 0.15s',
+          height: '100%',
         }}
         onMouseEnter={(e) => {
           ;(e.currentTarget as HTMLDivElement).style.borderColor = 'var(--line-strong)'
@@ -37,92 +48,78 @@ export function TradeCard({ trade }: TradeCardProps) {
           ;(e.currentTarget as HTMLDivElement).style.borderColor = 'var(--line)'
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 10,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div
               style={{
-                fontSize: 12,
-                fontFamily: 'IBM Plex Mono, monospace',
-                color: 'var(--ink-dim)',
-              }}
-            >
-              {dateStr}
-            </span>
-            <span
-              style={{
-                fontSize: 10,
-                fontFamily: 'IBM Plex Mono, monospace',
+                fontFamily: 'var(--mono)',
+                fontSize: 11,
                 color: 'var(--ink-faint)',
-                background: 'var(--surface-2)',
-                borderRadius: 3,
-                padding: '1px 5px',
+                marginBottom: 2,
               }}
             >
-              {sessionLabel[trade.session] || trade.session}
-            </span>
+              {dateStr} · {timeStr} · {sessionLabel[trade.session] || trade.session}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <DirectionLabel direction={trade.direction} size="md" />
+              <span style={{ fontFamily: 'var(--hand)', fontSize: 18 }}>XAUUSD</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <DirectionLabel direction={trade.direction} />
-            <GradeBadge grade={trade.grade} />
-          </div>
+          <GradeBadge grade={trade.grade} />
         </div>
 
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
-            gap: 6,
-            marginBottom: 10,
-            fontFamily: 'IBM Plex Mono, monospace',
-            fontSize: 12,
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 8,
           }}
         >
-          <div>
-            <div style={{ color: 'var(--ink-faint)', fontSize: 10, marginBottom: 2 }}>ENTRY</div>
-            <div style={{ color: 'var(--ink)' }}>{formatPrice(trade.entryPrice)}</div>
-          </div>
-          <div>
-            <div style={{ color: 'var(--ink-faint)', fontSize: 10, marginBottom: 2 }}>SL</div>
-            <div style={{ color: 'var(--red)' }}>{formatPrice(trade.stopLoss)}</div>
-          </div>
-          <div>
-            <div style={{ color: 'var(--ink-faint)', fontSize: 10, marginBottom: 2 }}>TP</div>
-            <div style={{ color: 'var(--green)' }}>{formatPrice(trade.takeProfit)}</div>
-          </div>
+          {[
+            { label: 'Entry', value: formatPrice(trade.entryPrice) },
+            { label: 'SL', value: formatPrice(trade.stopLoss) },
+            { label: 'TP', value: formatPrice(trade.takeProfit) },
+          ].map((s) => (
+            <div key={s.label} style={{ display: 'flex', flexDirection: 'column' }}>
+              <span
+                style={{
+                  fontFamily: 'var(--mono)',
+                  fontSize: 9,
+                  textTransform: 'uppercase',
+                  color: 'var(--ink-faint)',
+                  letterSpacing: '0.12em',
+                }}
+              >
+                {s.label}
+              </span>
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--ink)' }}>
+                {s.value}
+              </span>
+            </div>
+          ))}
         </div>
 
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
             justifyContent: 'space-between',
-            paddingTop: 10,
+            alignItems: 'center',
             borderTop: '1px solid var(--line)',
+            paddingTop: 8,
           }}
         >
-          <ResultPill result={trade.result} />
-          <div style={{ display: 'flex', gap: 12, fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>
-            <span style={{ color: trade.pips >= 0 ? 'var(--green)' : 'var(--red)' }}>
-              {formatPips(trade.pips)} pips
-            </span>
-            <span style={{ color: 'var(--ink-dim)' }}>RR {trade.rr.toFixed(1)}</span>
-          </div>
           <span
             style={{
-              fontFamily: 'IBM Plex Mono, monospace',
+              fontFamily: 'var(--mono)',
+              fontWeight: 500,
               fontSize: 13,
-              fontWeight: 600,
-              color: trade.pl >= 0 ? 'var(--green)' : 'var(--red)',
+              color: positive ? 'var(--green)' : 'var(--red)',
             }}
           >
-            {formatPL(trade.pl)}
+            {trade.result === 'OPEN' ? 'OPEN' : `${trade.result} · ${formatPips(trade.pips)}p`}
+          </span>
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--ink-faint)' }}>
+            R:R 1:{trade.rr.toFixed(1)}
           </span>
         </div>
       </div>

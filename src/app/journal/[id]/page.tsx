@@ -4,19 +4,23 @@ import { AppShell } from '@/components/layout/AppShell'
 import { KpiCard } from '@/components/ui/KpiCard'
 import { GradeBadge } from '@/components/ui/GradeBadge'
 import { DirectionLabel } from '@/components/ui/DirectionLabel'
-import { ResultPill } from '@/components/ui/ResultPill'
 import { AiReviewBlock } from '@/components/trades/AiReviewBlock'
 import { ConfluenceChecklist } from '@/components/trades/ConfluenceChecklist'
 import { ChartScreenshotUpload } from '@/components/trades/ChartScreenshotUpload'
 import { prisma } from '@/lib/prisma'
 import { formatPips, formatPL, formatPrice } from '@/lib/utils'
-import { ChevronLeft } from 'lucide-react'
 import type { TradeReview } from '@/lib/claude'
 import type { ConfluenceData } from '@/lib/utils'
 import { TradeDetailActions } from './TradeDetailActions'
 
 interface RouteContext {
   params: Promise<{ id: string }>
+}
+
+const sessionLabel: Record<string, string> = {
+  LONDON: 'London',
+  NEW_YORK: 'New York',
+  ASIA: 'Asia',
 }
 
 export default async function TradeDetailPage({ params }: RouteContext) {
@@ -27,16 +31,13 @@ export default async function TradeDetailPage({ params }: RouteContext) {
 
   const entryDate = new Date(trade.entryAt)
   const dateStr = entryDate.toLocaleDateString('en-US', {
-    weekday: 'short',
-    year: 'numeric',
     month: 'short',
     day: 'numeric',
   })
   const timeStr = entryDate.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: 'UTC',
-    timeZoneName: 'short',
+    hour12: false,
   })
 
   const heldMs = trade.exitAt
@@ -45,100 +46,104 @@ export default async function TradeDetailPage({ params }: RouteContext) {
   const heldStr = heldMs
     ? heldMs < 3600000
       ? `${Math.round(heldMs / 60000)}m`
-      : `${(heldMs / 3600000).toFixed(1)}h`
+      : `${Math.floor(heldMs / 3600000)}h ${Math.round((heldMs % 3600000) / 60000)}m`
     : 'Open'
 
   const aiReview = trade.aiReview as TradeReview | null
   const confluence = (trade.confluence as ConfluenceData) || {}
+  const positive = trade.pips >= 0
 
   return (
     <AppShell>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        {/* Page head */}
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            marginBottom: 20,
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            gap: 16,
+            paddingBottom: 12,
+            borderBottom: '1px solid var(--line)',
+            flexWrap: 'wrap',
           }}
         >
-          <Link
-            href="/journal"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              color: 'var(--ink-dim)',
-              fontFamily: 'Kalam, cursive',
-              fontSize: 13,
-              textDecoration: 'none',
-            }}
-          >
-            <ChevronLeft size={16} />
-            Journal
-          </Link>
-          <span style={{ color: 'var(--ink-faint)' }}>/</span>
-          <span
-            style={{
-              fontFamily: 'IBM Plex Mono, monospace',
-              fontSize: 12,
-              color: 'var(--ink-faint)',
-            }}
-          >
-            {trade.symbol}
-          </span>
-          <DirectionLabel direction={trade.direction} />
-          <ResultPill result={trade.result} />
-          <GradeBadge grade={trade.grade} />
-        </div>
-
-        <div style={{ marginBottom: 20 }}>
-          <div
-            style={{
-              fontFamily: 'Kalam, cursive',
-              fontSize: 20,
-              fontWeight: 700,
-              color: 'var(--ink)',
-              marginBottom: 2,
-            }}
-          >
-            {trade.symbol} {trade.direction}
+          <div>
+            <h2 style={{ fontFamily: 'var(--hand)', fontSize: 24, fontWeight: 700 }}>
+              <DirectionLabel direction={trade.direction} size="md" /> XAUUSD ·{' '}
+              <span style={{ color: 'var(--ink-dim)' }}>
+                {dateStr} · {timeStr}
+              </span>
+            </h2>
+            <div
+              style={{
+                fontFamily: 'var(--mono)',
+                fontSize: 11,
+                color: 'var(--ink-faint)',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                marginTop: 4,
+                display: 'flex',
+                gap: 10,
+                alignItems: 'center',
+              }}
+            >
+              <span>{sessionLabel[trade.session] || trade.session} session</span>
+              <span>·</span>
+              <span>#{trade.id.slice(-4)}</span>
+              {trade.result !== 'OPEN' && (
+                <>
+                  <span>·</span>
+                  <span
+                    style={{
+                      color: positive ? 'var(--green)' : 'var(--red)',
+                      letterSpacing: 0,
+                      textTransform: 'none',
+                      fontSize: 12,
+                    }}
+                  >
+                    {formatPips(trade.pips)} pips
+                  </span>
+                </>
+              )}
+            </div>
           </div>
-          <div
-            style={{
-              fontFamily: 'IBM Plex Mono, monospace',
-              fontSize: 12,
-              color: 'var(--ink-dim)',
-            }}
-          >
-            {dateStr} · {timeStr} · {trade.session}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link href="/journal" className="btn ghost">
+              ‹ Back
+            </Link>
+            <Link href={`/journal/${trade.id}/edit`} className="btn">
+              Edit
+            </Link>
           </div>
         </div>
 
+        {/* Two-column split */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 20,
+            gridTemplateColumns: '3fr 2fr',
+            gap: 16,
           }}
           className="trade-detail-grid"
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Left: chart + KPIs */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <ChartScreenshotUpload screenshotUrl={trade.screenshotUrl} />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
               <KpiCard label="Entry" value={formatPrice(trade.entryPrice)} />
-              <KpiCard label="Stop Loss" value={formatPrice(trade.stopLoss)} valueColor="var(--red)" />
-              <KpiCard label="Take Profit" value={formatPrice(trade.takeProfit)} valueColor="var(--green)" />
+              <KpiCard label="SL" value={formatPrice(trade.stopLoss)} />
+              <KpiCard label="TP" value={formatPrice(trade.takeProfit)} />
               <KpiCard label="Lots" value={trade.lots.toFixed(2)} />
-              <KpiCard
-                label="Risk/Reward"
-                value={`${trade.rr.toFixed(1)}R`}
-              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+              <KpiCard label="R:R" value={`1 : ${trade.rr.toFixed(1)}`} />
               <KpiCard
                 label="Pips"
                 value={formatPips(trade.pips)}
-                valueColor={trade.pips >= 0 ? 'var(--green)' : 'var(--red)'}
+                valueColor={positive ? 'var(--green)' : 'var(--red)'}
               />
               <KpiCard
                 label="P/L"
@@ -149,31 +154,14 @@ export default async function TradeDetailPage({ params }: RouteContext) {
             </div>
 
             {trade.notes && (
-              <div
-                style={{
-                  background: 'var(--surface)',
-                  border: '1px solid var(--line)',
-                  borderRadius: 8,
-                  padding: 14,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 10,
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    color: 'var(--ink-faint)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    marginBottom: 8,
-                  }}
-                >
+              <div className="box">
+                <div className="label" style={{ marginBottom: 8 }}>
                   Notes
                 </div>
                 <p
                   style={{
                     fontSize: 13,
                     color: 'var(--ink)',
-                    fontFamily: 'Inter, sans-serif',
                     lineHeight: 1.6,
                     whiteSpace: 'pre-wrap',
                   }}
@@ -184,34 +172,21 @@ export default async function TradeDetailPage({ params }: RouteContext) {
             )}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div
-              style={{
-                background: 'var(--surface)',
-                border: '1px solid var(--line)',
-                borderRadius: 8,
-                padding: 16,
-              }}
-            >
+          {/* Right: checklist + AI */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="box">
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: 16,
+                  marginBottom: 8,
                 }}
               >
-                <div
-                  style={{
-                    fontFamily: 'Kalam, cursive',
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: 'var(--ink)',
-                  }}
-                >
-                  Setup Grade
-                </div>
-                <GradeBadge grade={trade.grade} />
+                <h4 style={{ fontFamily: 'var(--hand)', fontSize: 15, fontWeight: 700 }}>
+                  Setup grade
+                </h4>
+                <GradeBadge grade={trade.grade} size="md" />
               </div>
               <ConfluenceChecklist confluence={confluence} readonly />
             </div>
@@ -224,10 +199,8 @@ export default async function TradeDetailPage({ params }: RouteContext) {
       </div>
 
       <style>{`
-        @media (max-width: 768px) {
-          .trade-detail-grid {
-            grid-template-columns: 1fr !important;
-          }
+        @media (max-width: 900px) {
+          .trade-detail-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </AppShell>

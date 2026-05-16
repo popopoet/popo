@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { RefreshCw } from 'lucide-react'
 
 type DeployState = 'idle' | 'deploying' | 'deployed' | 'undeploying' | 'syncing'
 
 export function DeployButton() {
+  const router = useRouter()
   const [state, setState] = useState<DeployState>('idle')
   const [message, setMessage] = useState('')
 
@@ -27,6 +29,7 @@ export function DeployButton() {
     try {
       await fetch('/api/metaapi/undeploy', { method: 'POST' })
       setState('idle')
+      setMessage('')
     } catch {
       setState('deployed')
     }
@@ -38,69 +41,84 @@ export function DeployButton() {
     try {
       const res = await fetch('/api/metaapi/sync', { method: 'POST' })
       const data = await res.json()
-      setMessage(`Synced ${data.count ?? 0} trades`)
+      setMessage(`Synced ${data.count ?? 0}`)
       setState('deployed')
+      router.refresh()
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Sync failed')
       setState('deployed')
     }
   }
 
-  const dotStyle: React.CSSProperties = {
+  const baseBtn: React.CSSProperties = {
+    fontFamily: 'var(--hand)',
+    fontSize: 14,
+    padding: '6px 12px',
+    borderRadius: 6,
+    cursor: 'pointer',
+    background: 'var(--surface-2)',
+    color: 'var(--ink)',
+    border: '1px solid var(--line-strong)',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+  }
+
+  const dotBase: React.CSSProperties = {
     width: 8,
     height: 8,
     borderRadius: '50%',
-    display: 'inline-block',
     flexShrink: 0,
   }
 
-  const btnBase: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    padding: '6px 12px',
-    borderRadius: 6,
-    fontSize: 13,
-    fontFamily: 'Kalam, cursive',
-    border: '1px solid var(--line)',
-    background: 'var(--surface-2)',
-    color: 'var(--ink)',
-  }
+  const isConnected = state === 'deployed' || state === 'syncing'
 
-  if (state === 'deployed' || state === 'syncing') {
+  if (isConnected) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {message && (
-          <span style={{ fontSize: 12, color: 'var(--ink-dim)', fontFamily: 'IBM Plex Mono' }}>
+          <span
+            style={{
+              fontSize: 11,
+              color: 'var(--ink-faint)',
+              fontFamily: 'var(--mono)',
+            }}
+          >
             {message}
           </span>
         )}
         <button
           onClick={handleSync}
           disabled={state === 'syncing'}
-          style={{ ...btnBase, color: 'var(--green)', borderColor: 'var(--green)' }}
+          style={{
+            ...baseBtn,
+            color: 'var(--green)',
+            borderColor: 'var(--green)',
+          }}
+          title="Sync new trades"
         >
           <span
-            style={{ ...dotStyle, background: 'var(--green)', animation: 'pulse-dot 1.5s ease-in-out infinite' }}
+            style={{
+              ...dotBase,
+              background: 'var(--green)',
+              boxShadow: '0 0 0 3px rgba(121, 180, 135, 0.18)',
+              animation: 'deploy-pulse 1.6s ease-in-out infinite',
+            }}
           />
           {state === 'syncing' ? (
             <>
-              <RefreshCw size={12} style={{ animation: 'spin 0.8s linear infinite' }} />
-              Syncing...
+              <RefreshCw size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> syncing
             </>
           ) : (
-            <>
-              <Wifi size={12} />
-              Sync
-            </>
+            <>sync</>
           )}
         </button>
         <button
           onClick={handleUndeploy}
-          style={{ ...btnBase, fontSize: 11, padding: '4px 8px' }}
-          title="Disconnect"
+          style={{ ...baseBtn, padding: '6px 10px', fontSize: 12 }}
+          title="Disconnect MT5"
         >
-          <WifiOff size={11} />
+          off
         </button>
       </div>
     )
@@ -109,25 +127,23 @@ export function DeployButton() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       {message && (
-        <span style={{ fontSize: 12, color: 'var(--red)', fontFamily: 'IBM Plex Mono' }}>
+        <span style={{ fontSize: 11, color: 'var(--red)', fontFamily: 'var(--mono)' }}>
           {message}
         </span>
       )}
       <button
         onClick={handleDeploy}
         disabled={state === 'deploying'}
-        style={btnBase}
+        style={baseBtn}
       >
+        <span style={{ ...dotBase, background: 'var(--ink-faint)' }} />
         {state === 'deploying' ? (
           <>
             <RefreshCw size={12} style={{ animation: 'spin 0.8s linear infinite' }} />
-            Connecting...
+            connecting
           </>
         ) : (
-          <>
-            <span style={{ ...dotStyle, background: 'var(--ink-faint)' }} />
-            Connect MT5
-          </>
+          'connect MT5'
         )}
       </button>
     </div>

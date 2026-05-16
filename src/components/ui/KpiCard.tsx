@@ -2,44 +2,44 @@ interface KpiCardProps {
   label: string
   value: string
   sub?: string
+  delta?: string
+  deltaColor?: 'pos' | 'neg' | 'faint'
   valueColor?: string
 }
 
-export function KpiCard({ label, value, sub, valueColor }: KpiCardProps) {
+export function KpiCard({ label, value, sub, delta, deltaColor, valueColor }: KpiCardProps) {
+  const deltaColorMap = {
+    pos: 'var(--green)',
+    neg: 'var(--red)',
+    faint: 'var(--ink-faint)',
+  }
   return (
-    <div
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--line)',
-        borderRadius: 8,
-        padding: 14,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 11,
-          color: 'var(--ink-faint)',
-          fontFamily: 'IBM Plex Mono, monospace',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          marginBottom: 6,
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 22,
-          fontFamily: 'IBM Plex Mono, monospace',
-          fontWeight: 600,
-          color: valueColor || 'var(--ink)',
-          lineHeight: 1.2,
-        }}
+    <div className="kpi">
+      <span className="label">{label}</span>
+      <span
+        className="v"
+        style={valueColor ? { color: valueColor } : undefined}
       >
         {value}
-      </div>
-      {sub && (
-        <div style={{ fontSize: 11, color: 'var(--ink-dim)', marginTop: 4 }}>{sub}</div>
+      </span>
+      {delta && (
+        <span
+          className="delta"
+          style={{ color: deltaColor ? deltaColorMap[deltaColor] : 'var(--ink-faint)' }}
+        >
+          {delta}
+        </span>
+      )}
+      {sub && !delta && (
+        <span
+          style={{
+            fontFamily: 'var(--mono)',
+            fontSize: 11,
+            color: 'var(--ink-faint)',
+          }}
+        >
+          {sub}
+        </span>
       )}
     </div>
   )

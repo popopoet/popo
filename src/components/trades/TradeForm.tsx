@@ -35,10 +35,10 @@ const defaultForm: TradeFormData = {
   notes: '',
   screenshotUrl: '',
   confluence: {
-    trendAlignment: false,
-    keyLevel: false,
-    candlePattern: false,
-    riskReward: false,
+    sndFresh: false,
+    bosChoCh: false,
+    volume: false,
+    fundamental: false,
   },
 }
 

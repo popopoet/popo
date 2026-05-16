@@ -3,8 +3,6 @@
 import Link from 'next/link'
 import type { Trade } from '@prisma/client'
 import { GradeBadge } from '@/components/ui/GradeBadge'
-import { DirectionLabel } from '@/components/ui/DirectionLabel'
-import { ResultPill } from '@/components/ui/ResultPill'
 import { formatPips, formatPL, formatPrice } from '@/lib/utils'
 import { useState } from 'react'
 import { ChevronUp, ChevronDown } from 'lucide-react'
@@ -15,21 +13,26 @@ interface TradeTableProps {
   trades: Trade[]
 }
 
+const sessionShort: Record<string, string> = {
+  LONDON: 'LDN',
+  NEW_YORK: 'NY',
+  ASIA: 'ASIA',
+}
+
 export function TradeTable({ trades }: TradeTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('entryAt')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
   function handleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    } else {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else {
       setSortKey(key)
       setSortDir('desc')
     }
   }
 
   const sorted = [...trades].sort((a, b) => {
-    let av: number | string, bv: number | string
+    let av: number, bv: number
     if (sortKey === 'entryAt') {
       av = new Date(a.entryAt).getTime()
       bv = new Date(b.entryAt).getTime()
@@ -38,58 +41,49 @@ export function TradeTable({ trades }: TradeTableProps) {
       av = order[a.grade]
       bv = order[b.grade]
     } else {
-      av = a[sortKey]
-      bv = b[sortKey]
+      av = a[sortKey] as number
+      bv = b[sortKey] as number
     }
     if (av < bv) return sortDir === 'asc' ? -1 : 1
     if (av > bv) return sortDir === 'asc' ? 1 : -1
     return 0
   })
 
-  const colStyle: React.CSSProperties = {
-    padding: '8px 12px',
-    fontFamily: 'IBM Plex Mono, monospace',
-    fontSize: 11,
-    color: 'var(--ink-faint)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    cursor: 'pointer',
-    userSelect: 'none',
-    whiteSpace: 'nowrap',
-  }
-
   const SortIcon = ({ k }: { k: SortKey }) =>
     sortKey === k ? (
-      sortDir === 'asc' ? <ChevronUp size={12} style={{ display: 'inline' }} /> : <ChevronDown size={12} style={{ display: 'inline' }} />
+      sortDir === 'asc' ? (
+        <ChevronUp size={11} style={{ display: 'inline', verticalAlign: 'middle' }} />
+      ) : (
+        <ChevronDown size={11} style={{ display: 'inline', verticalAlign: 'middle' }} />
+      )
     ) : null
 
   return (
     <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <table className="tj">
         <thead>
-          <tr style={{ borderBottom: '1px solid var(--line)' }}>
-            <th style={colStyle} onClick={() => handleSort('entryAt')}>
+          <tr>
+            <th onClick={() => handleSort('entryAt')} style={{ cursor: 'pointer' }}>
               Date <SortIcon k="entryAt" />
             </th>
-            <th style={colStyle}>Dir</th>
-            <th style={colStyle}>Session</th>
-            <th style={colStyle}>Entry</th>
-            <th style={colStyle}>SL</th>
-            <th style={colStyle}>TP</th>
-            <th style={colStyle}>Lots</th>
-            <th style={colStyle} onClick={() => handleSort('rr')}>
-              RR <SortIcon k="rr" />
+            <th>Dir</th>
+            <th>Session</th>
+            <th>Entry</th>
+            <th>SL</th>
+            <th>TP</th>
+            <th>Lots</th>
+            <th onClick={() => handleSort('rr')} style={{ cursor: 'pointer' }}>
+              R:R <SortIcon k="rr" />
             </th>
-            <th style={colStyle} onClick={() => handleSort('pips')}>
+            <th onClick={() => handleSort('pips')} style={{ cursor: 'pointer' }}>
               Pips <SortIcon k="pips" />
             </th>
-            <th style={colStyle} onClick={() => handleSort('pl')}>
+            <th onClick={() => handleSort('pl')} style={{ cursor: 'pointer' }}>
               P/L <SortIcon k="pl" />
             </th>
-            <th style={colStyle} onClick={() => handleSort('grade')}>
+            <th onClick={() => handleSort('grade')} style={{ cursor: 'pointer' }}>
               Grade <SortIcon k="grade" />
             </th>
-            <th style={colStyle}>Result</th>
           </tr>
         </thead>
         <tbody>
@@ -98,122 +92,42 @@ export function TradeTable({ trades }: TradeTableProps) {
             const dateStr = date.toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
-              year: '2-digit',
+            })
+            const timeStr = date.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
             })
             return (
-              <tr
-                key={trade.id}
-                style={{ borderBottom: '1px solid var(--line)', transition: 'background 0.1s' }}
-                onMouseEnter={(e) => {
-                  ;(e.currentTarget as HTMLTableRowElement).style.background = 'var(--surface-2)'
-                }}
-                onMouseLeave={(e) => {
-                  ;(e.currentTarget as HTMLTableRowElement).style.background = 'transparent'
-                }}
-              >
-                <td style={{ padding: '10px 12px' }}>
+              <tr key={trade.id} style={{ cursor: 'pointer' }}>
+                <td>
                   <Link
                     href={`/journal/${trade.id}`}
-                    style={{
-                      fontFamily: 'IBM Plex Mono, monospace',
-                      fontSize: 12,
-                      color: 'var(--ink-dim)',
-                      textDecoration: 'none',
-                    }}
+                    style={{ color: 'inherit', textDecoration: 'none' }}
                   >
-                    {dateStr}
+                    {dateStr} {timeStr}
                   </Link>
                 </td>
-                <td style={{ padding: '10px 12px' }}>
-                  <DirectionLabel direction={trade.direction} />
-                </td>
                 <td
-                  style={{
-                    padding: '10px 12px',
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    fontSize: 11,
-                    color: 'var(--ink-faint)',
-                  }}
+                  className={trade.direction === 'BUY' ? 'pos' : 'neg'}
+                  style={{ fontWeight: 600 }}
                 >
-                  {trade.session}
+                  {trade.direction}
                 </td>
-                <td
-                  style={{
-                    padding: '10px 12px',
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    fontSize: 12,
-                    color: 'var(--ink)',
-                  }}
-                >
-                  {formatPrice(trade.entryPrice)}
-                </td>
-                <td
-                  style={{
-                    padding: '10px 12px',
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    fontSize: 12,
-                    color: 'var(--red)',
-                  }}
-                >
-                  {formatPrice(trade.stopLoss)}
-                </td>
-                <td
-                  style={{
-                    padding: '10px 12px',
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    fontSize: 12,
-                    color: 'var(--green)',
-                  }}
-                >
-                  {formatPrice(trade.takeProfit)}
-                </td>
-                <td
-                  style={{
-                    padding: '10px 12px',
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    fontSize: 12,
-                    color: 'var(--ink-dim)',
-                  }}
-                >
-                  {trade.lots.toFixed(2)}
-                </td>
-                <td
-                  style={{
-                    padding: '10px 12px',
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    fontSize: 12,
-                    color: 'var(--ink)',
-                  }}
-                >
-                  {trade.rr.toFixed(1)}
-                </td>
-                <td
-                  style={{
-                    padding: '10px 12px',
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: trade.pips >= 0 ? 'var(--green)' : 'var(--red)',
-                  }}
-                >
+                <td>{sessionShort[trade.session] || trade.session}</td>
+                <td>{formatPrice(trade.entryPrice)}</td>
+                <td>{formatPrice(trade.stopLoss)}</td>
+                <td>{formatPrice(trade.takeProfit)}</td>
+                <td>{trade.lots.toFixed(2)}</td>
+                <td>1:{trade.rr.toFixed(1)}</td>
+                <td className={trade.pips >= 0 ? 'pos' : 'neg'} style={{ fontWeight: 500 }}>
                   {formatPips(trade.pips)}
                 </td>
-                <td
-                  style={{
-                    padding: '10px 12px',
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: trade.pl >= 0 ? 'var(--green)' : 'var(--red)',
-                  }}
-                >
+                <td className={trade.pl >= 0 ? 'pos' : 'neg'} style={{ fontWeight: 500 }}>
                   {formatPL(trade.pl)}
                 </td>
-                <td style={{ padding: '10px 12px' }}>
+                <td>
                   <GradeBadge grade={trade.grade} />
-                </td>
-                <td style={{ padding: '10px 12px' }}>
-                  <ResultPill result={trade.result} />
                 </td>
               </tr>
             )
@@ -226,11 +140,11 @@ export function TradeTable({ trades }: TradeTableProps) {
             padding: '40px 20px',
             textAlign: 'center',
             color: 'var(--ink-faint)',
-            fontFamily: 'IBM Plex Mono, monospace',
+            fontFamily: 'var(--mono)',
             fontSize: 13,
           }}
         >
-          No trades found
+          No trades
         </div>
       )}
     </div>
