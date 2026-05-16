@@ -4,39 +4,58 @@ import { KpiCard } from '@/components/ui/KpiCard'
 import { EquityCurveChart } from '@/components/ui/EquityCurveChart'
 import { BreakdownBars } from '@/components/ui/BreakdownBars'
 import { GradeBadge } from '@/components/ui/GradeBadge'
+import { WithdrawalButton } from '@/components/ui/WithdrawalButton'
 import { prisma } from '@/lib/prisma'
-import { formatPips, formatPL, getISOWeek } from '@/lib/utils'
-import type { Trade, Grade } from '@prisma/client'
+import { getAccountBalance } from '@/lib/metaapi'
+import { formatPL, getISOWeek } from '@/lib/utils'
+import type { Trade, Grade, Withdrawal } from '@prisma/client'
+import React from 'react'
 
 type Period = '30d' | '90d' | 'ytd' | 'all'
 
 function getDateFrom(period: Period): Date | null {
   const now = new Date()
-  if (period === '30d') {
-    const d = new Date(now)
-    d.setDate(d.getDate() - 30)
-    return d
-  }
-  if (period === '90d') {
-    const d = new Date(now)
-    d.setDate(d.getDate() - 90)
-    return d
-  }
+  if (period === '30d') { const d = new Date(now); d.setDate(d.getDate() - 30); return d }
+  if (period === '90d') { const d = new Date(now); d.setDate(d.getDate() - 90); return d }
   if (period === 'ytd') return new Date(now.getFullYear(), 0, 1)
   return null
 }
 
-function buildEquityCurve(trades: Trade[]) {
-  const sorted = [...trades].sort(
-    (a, b) => new Date(a.entryAt).getTime() - new Date(b.entryAt).getTime()
-  )
-  let cumPips = 0
-  return sorted.map((t) => {
-    cumPips += t.pips
-    const d = new Date(t.entryAt)
-    return {
+function buildBalanceCurve(
+  trades: Trade[],
+  withdrawals: Withdrawal[],
+  startingBalance: number,
+) {
+  type Event = { ts: number; date: string; pl?: number; withdrawal?: number }
+  const events: Event[] = []
+
+  for (const t of trades) {
+    const d = new Date(t.exitAt ?? t.entryAt)
+    events.push({
+      ts: d.getTime(),
       date: `${d.getMonth() + 1}/${d.getDate()}`,
-      equity: Math.round(cumPips * 10) / 10,
+      pl: t.pl,
+    })
+  }
+  for (const w of withdrawals) {
+    const d = new Date(w.date)
+    events.push({
+      ts: d.getTime(),
+      date: `${d.getMonth() + 1}/${d.getDate()}`,
+      withdrawal: w.amount,
+    })
+  }
+
+  events.sort((a, b) => a.ts - b.ts)
+
+  let balance = startingBalance
+  return events.map((ev) => {
+    if (ev.pl !== undefined) balance += ev.pl
+    if (ev.withdrawal !== undefined) balance -= ev.withdrawal
+    return {
+      date: ev.date,
+      balance: Math.round(balance * 100) / 100,
+      withdrawal: ev.withdrawal,
     }
   })
 }
@@ -50,19 +69,36 @@ export default async function DashboardPage({
   const period = (sp.period as Period) || '30d'
   const from = getDateFrom(period)
 
-  const trades = await prisma.trade.findMany({
-    where: from ? { entryAt: { gte: from } } : undefined,
-    orderBy: { entryAt: 'asc' },
-  })
+  const [trades, allTrades, withdrawals, liveBalance] = await Promise.all([
+    prisma.trade.findMany({
+      where: from ? { entryAt: { gte: from } } : undefined,
+      orderBy: { entryAt: 'asc' },
+    }),
+    prisma.trade.findMany({ select: { pl: true } }),
+    prisma.withdrawal.findMany({ orderBy: { date: 'asc' } }),
+    getAccountBalance().catch(() => null),
+  ])
 
   const closed = trades.filter((t) => t.result !== 'OPEN')
   const wins = closed.filter((t) => t.result === 'WIN')
   const losses = closed.filter((t) => t.result === 'LOSS')
   const winRate = closed.length > 0 ? Math.round((wins.length / closed.length) * 100) : 0
-  const netPips = closed.reduce((s, t) => s + t.pips, 0)
   const netPL = closed.reduce((s, t) => s + t.pl, 0)
+  const netPips = closed.reduce((s, t) => s + t.pips, 0)
 
-  const equityCurve = buildEquityCurve(closed)
+  const allTimePL = allTrades.reduce((s, t) => s + t.pl, 0)
+  const totalWithdrawn = withdrawals.reduce((s, w) => s + w.amount, 0)
+
+  const currentBalance = liveBalance?.balance ?? null
+  const currency = liveBalance?.currency === 'USD' ? '$' : (liveBalance?.currency ?? '$')
+  const startingBalance = currentBalance !== null
+    ? currentBalance - allTimePL + totalWithdrawn
+    : 0
+
+  const periodWithdrawals = withdrawals.filter(
+    (w) => !from || new Date(w.date) >= from,
+  )
+  const equityCurve = buildBalanceCurve(closed, periodWithdrawals, startingBalance)
 
   const sessionGroups: Record<string, number> = { LONDON: 0, NEW_YORK: 0, ASIA: 0 }
   for (const t of closed) sessionGroups[t.session] = (sessionGroups[t.session] || 0) + t.pips
@@ -84,7 +120,7 @@ export default async function DashboardPage({
   ]
 
   const thisWeekCount = trades.filter(
-    (t) => getISOWeek(new Date(t.entryAt)) === getISOWeek(new Date())
+    (t) => getISOWeek(new Date(t.entryAt)) === getISOWeek(new Date()),
   ).length
 
   const periods: { key: Period; label: string }[] = [
@@ -126,15 +162,36 @@ export default async function DashboardPage({
               {trades.length} trades · {wins.length}W · {losses.length}L · {periods.find((p) => p.key === period)?.label}
             </div>
           </div>
+
+          {currentBalance !== null && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-end',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'var(--mono)',
+                  fontSize: 24,
+                  fontWeight: 600,
+                  color: 'var(--ink)',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                {currency}{currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                live balance
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Hero: equity curve + side stats */}
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '3fr 2fr',
-            gap: 12,
-          }}
+          style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 12 }}
           className="dash-hero"
         >
           <div className="box">
@@ -144,11 +201,16 @@ export default async function DashboardPage({
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 marginBottom: 10,
+                flexWrap: 'wrap',
+                gap: 8,
               }}
             >
-              <h4 style={{ fontFamily: 'var(--hand)', fontSize: 15, fontWeight: 700 }}>
-                Equity curve
-              </h4>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <h4 style={{ fontFamily: 'var(--hand)', fontSize: 15, fontWeight: 700 }}>
+                  Balance curve
+                </h4>
+                <WithdrawalButton />
+              </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {periods.map((p) => (
                   <Link
@@ -162,7 +224,7 @@ export default async function DashboardPage({
               </div>
             </div>
             {equityCurve.length > 0 ? (
-              <EquityCurveChart data={equityCurve} />
+              <EquityCurveChart data={equityCurve} currency={currency} />
             ) : (
               <div
                 style={{
@@ -186,23 +248,23 @@ export default async function DashboardPage({
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div className="kpi">
-              <span className="label">Net pips</span>
+              <span className="label">Net P/L</span>
               <span
                 style={{
                   fontFamily: 'var(--mono)',
                   fontSize: 34,
                   fontWeight: 500,
-                  color: netPips >= 0 ? 'var(--green)' : 'var(--red)',
+                  color: netPL >= 0 ? 'var(--green)' : 'var(--red)',
                   lineHeight: 1.1,
                 }}
               >
-                {formatPips(netPips)}
+                {formatPL(netPL)}
               </span>
               <span
                 className="delta"
-                style={{ color: netPL >= 0 ? 'var(--green)' : 'var(--red)' }}
+                style={{ color: netPips >= 0 ? 'var(--green)' : 'var(--red)' }}
               >
-                {formatPL(netPL)} · {period === 'all' ? 'all time' : period.toUpperCase()}
+                {netPips >= 0 ? '+' : ''}{netPips.toFixed(1)} pips · {period === 'all' ? 'all time' : period.toUpperCase()}
               </span>
             </div>
 
@@ -221,11 +283,7 @@ export default async function DashboardPage({
 
         {/* Breakdowns */}
         <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 12,
-          }}
+          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}
           className="dash-breakdown"
         >
           <div className="box">
@@ -239,9 +297,7 @@ export default async function DashboardPage({
 
       <style>{`
         @media (max-width: 900px) {
-          .dash-hero, .dash-breakdown {
-            grid-template-columns: 1fr !important;
-          }
+          .dash-hero, .dash-breakdown { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </AppShell>

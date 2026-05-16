@@ -112,6 +112,19 @@ export interface NormalizedDeal {
   rr: number
 }
 
+export async function getAccountBalance(): Promise<{
+  balance: number
+  equity: number
+  currency: string
+}> {
+  const raw = await clientFetch(`/users/current/accounts/${ACCOUNT_ID}/account-information`)
+  return {
+    balance: raw.balance ?? 0,
+    equity: raw.equity ?? 0,
+    currency: raw.currency ?? 'USD',
+  }
+}
+
 export async function fetchHistoryDeals(from: Date, to: Date): Promise<Partial<NormalizedDeal>[]> {
   const fromISO = from.toISOString()
   const toISO = to.toISOString()

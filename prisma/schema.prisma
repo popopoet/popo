@@ -59,3 +59,13 @@ enum Grade {
   B
   C
 }
+
+model Withdrawal {
+  id        String   @id @default(cuid())
+  amount    Float
+  date      DateTime
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
