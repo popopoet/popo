@@ -48,12 +48,12 @@ export function TradeForm() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  function set(key: keyof TradeFormData, value: string | ConfluenceData) {
+  function set(key: Exclude<keyof TradeFormData, 'confluence'>, value: string) {
     setForm((prev) => {
       const next = { ...prev, [key]: value }
       if (key === 'entryAt') {
         try {
-          next.session = calcSession(new Date(value as string))
+          next.session = calcSession(new Date(value))
         } catch {}
       }
       return next
@@ -316,7 +316,7 @@ export function TradeForm() {
         <div style={{ marginBottom: 16 }}>
           <ConfluenceChecklist
             confluence={form.confluence}
-            onChange={(c) => set('confluence', c as unknown as string)}
+            onChange={(c) => setForm((prev) => ({ ...prev, confluence: c }))}
           />
         </div>
         <div>
