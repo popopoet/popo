@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import type { Trade } from '@prisma/client'
 import { GradeBadge } from '@/components/ui/GradeBadge'
