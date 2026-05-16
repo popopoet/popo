@@ -6,13 +6,9 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 function createPrismaClient() {
-  const databaseUrl = process.env.DATABASE_URL
-  if (!databaseUrl) {
-    const adapter = new PrismaPg({ connectionString: 'postgresql://localhost:5432/xaujournal' })
-    return new PrismaClient({ adapter })
-  }
-  const adapter = new PrismaPg({ connectionString: databaseUrl })
-  return new PrismaClient({ adapter, log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'] })
+  const connectionString = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/xaujournal'
+  const adapter = new PrismaPg(connectionString)
+  return new PrismaClient({ adapter })
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient()
