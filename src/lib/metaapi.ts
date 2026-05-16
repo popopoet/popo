@@ -39,6 +39,9 @@ let _cachedRegion: string | null = null
 
 async function clientFetch(path: string) {
   if (!_cachedRegion) {
+    _cachedRegion = process.env.METAAPI_REGION ?? null
+  }
+  if (!_cachedRegion) {
     const info = await getAccountInfo()
     _cachedRegion = info.region ?? info.accountReplicas?.[0]?.region ?? 'new-york'
   }
