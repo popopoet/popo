@@ -4,32 +4,45 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { RefreshCw } from 'lucide-react'
 
-type DeployState = 'idle' | 'deploying' | 'deployed' | 'undeploying' | 'syncing'
+type DeployState = 'idle' | 'checking' | 'deploying' | 'deployed' | 'undeploying' | 'syncing'
 
 export function DeployButton() {
   const router = useRouter()
   const [state, setState] = useState<DeployState>('idle')
   const [message, setMessage] = useState('')
 
-  async function handleDeploy() {
-    setState('deploying')
+  async function handleConnect() {
+    setState('checking')
     setMessage('')
     try {
-      const res = await fetch('/api/metaapi/deploy', { method: 'POST' })
-      if (!res.ok) throw new Error('Deploy failed')
+      // Check account state first
+      const statusRes = await fetch('/api/metaapi/status')
+      const status = await statusRes.json()
+
+      if (!status.ok) {
+        // If not connected, try deploying
+        setState('deploying')
+        const deployRes = await fetch('/api/metaapi/deploy', { method: 'POST' })
+        if (!deployRes.ok) {
+          const d = await deployRes.json()
+          throw new Error(d.error || 'Deploy failed')
+        }
+      }
+
       setState('deployed')
+      setMessage(status.state?.state ?? 'connected')
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Deploy failed')
+      setMessage(e instanceof Error ? e.message : 'Connect failed')
       setState('idle')
     }
   }
 
   async function handleUndeploy() {
     setState('undeploying')
+    setMessage('')
     try {
       await fetch('/api/metaapi/undeploy', { method: 'POST' })
       setState('idle')
-      setMessage('')
     } catch {
       setState('deployed')
     }
@@ -41,7 +54,8 @@ export function DeployButton() {
     try {
       const res = await fetch('/api/metaapi/sync', { method: 'POST' })
       const data = await res.json()
-      setMessage(`Synced ${data.count ?? 0}`)
+      if (!res.ok) throw new Error(data.error || 'Sync failed')
+      setMessage(`+${data.count ?? 0} trades`)
       setState('deployed')
       router.refresh()
     } catch (e) {
@@ -72,30 +86,21 @@ export function DeployButton() {
   }
 
   const isConnected = state === 'deployed' || state === 'syncing'
+  const isBusy = state === 'checking' || state === 'deploying' || state === 'undeploying'
 
   if (isConnected) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {message && (
-          <span
-            style={{
-              fontSize: 11,
-              color: 'var(--ink-faint)',
-              fontFamily: 'var(--mono)',
-            }}
-          >
+          <span style={{ fontSize: 11, color: 'var(--ink-faint)', fontFamily: 'var(--mono)' }}>
             {message}
           </span>
         )}
         <button
           onClick={handleSync}
           disabled={state === 'syncing'}
-          style={{
-            ...baseBtn,
-            color: 'var(--green)',
-            borderColor: 'var(--green)',
-          }}
-          title="Sync new trades"
+          style={{ ...baseBtn, color: 'var(--green)', borderColor: 'var(--green)' }}
+          title="Sync trades from MT5"
         >
           <span
             style={{
@@ -106,12 +111,8 @@ export function DeployButton() {
             }}
           />
           {state === 'syncing' ? (
-            <>
-              <RefreshCw size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> syncing
-            </>
-          ) : (
-            <>sync</>
-          )}
+            <><RefreshCw size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> syncing</>
+          ) : 'sync'}
         </button>
         <button
           onClick={handleUndeploy}
@@ -127,24 +128,32 @@ export function DeployButton() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       {message && (
-        <span style={{ fontSize: 11, color: 'var(--red)', fontFamily: 'var(--mono)' }}>
+        <span
+          style={{
+            fontSize: 11,
+            color: 'var(--red)',
+            fontFamily: 'var(--mono)',
+            maxWidth: 200,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+          title={message}
+        >
           {message}
         </span>
       )}
       <button
-        onClick={handleDeploy}
-        disabled={state === 'deploying'}
+        onClick={handleConnect}
+        disabled={isBusy}
         style={baseBtn}
       >
-        <span style={{ ...dotBase, background: 'var(--ink-faint)' }} />
-        {state === 'deploying' ? (
-          <>
-            <RefreshCw size={12} style={{ animation: 'spin 0.8s linear infinite' }} />
-            connecting
-          </>
-        ) : (
-          'connect MT5'
-        )}
+        <span style={{ ...dotBase, background: isBusy ? 'var(--amber)' : 'var(--ink-faint)' }} />
+        {state === 'checking'
+          ? <><RefreshCw size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> checking</>
+          : state === 'deploying'
+          ? <><RefreshCw size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> connecting</>
+          : 'connect MT5'}
       </button>
     </div>
   )
