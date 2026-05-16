@@ -18,6 +18,14 @@ export async function GET() {
     const state = await getAccountState()
     return NextResponse.json({ ok: true, accountId, state })
   } catch (e) {
-    return NextResponse.json({ ok: false, error: String(e), accountId })
+    const err = e as Error
+    const cause = (err as NodeJS.ErrnoException & { cause?: unknown }).cause
+    return NextResponse.json({
+      ok: false,
+      error: String(e),
+      cause: cause ? String(cause) : undefined,
+      code: (cause as NodeJS.ErrnoException)?.code,
+      accountId,
+    })
   }
 }
