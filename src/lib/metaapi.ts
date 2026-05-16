@@ -94,6 +94,40 @@ interface RawDeal {
   comment?: string
 }
 
+export interface BalanceOp {
+  sourceId: string
+  amount: number
+  date: Date
+  note: string
+  type: 'WITHDRAWAL' | 'DEPOSIT'
+}
+
+export async function fetchBalanceOps(from: Date, to: Date): Promise<BalanceOp[]> {
+  const fromISO = from.toISOString()
+  const toISO = to.toISOString()
+
+  const raw = await clientFetch(
+    `/users/current/accounts/${ACCOUNT_ID}/history-deals/time/${fromISO}/${toISO}`
+  )
+
+  if (!Array.isArray(raw)) return []
+
+  const ops: BalanceOp[] = []
+  for (const d of raw as RawDeal[]) {
+    if (d.type !== 'DEAL_TYPE_BALANCE') continue
+    const amount = d.profit ?? 0
+    if (amount === 0) continue
+    ops.push({
+      sourceId: d.id,
+      amount: Math.abs(amount),
+      date: new Date(d.time),
+      note: d.comment ?? '',
+      type: amount < 0 ? 'WITHDRAWAL' : 'DEPOSIT',
+    })
+  }
+  return ops
+}
+
 export interface NormalizedDeal {
   symbol: string
   direction: Direction

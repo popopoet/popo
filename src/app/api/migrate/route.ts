@@ -18,6 +18,12 @@ export async function GET() {
     await prisma.$executeRawUnsafe(`
       CREATE INDEX IF NOT EXISTS "Withdrawal_date_idx" ON "Withdrawal"("date")
     `)
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Withdrawal" ADD COLUMN IF NOT EXISTS "sourceId" TEXT
+    `)
+    await prisma.$executeRawUnsafe(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "Withdrawal_sourceId_key" ON "Withdrawal"("sourceId")
+    `)
     return NextResponse.json({ ok: true, message: 'Withdrawal table ready' })
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e) }, { status: 500 })

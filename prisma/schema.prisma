@@ -65,6 +65,7 @@ model Withdrawal {
   amount    Float
   date      DateTime
   note      String?
+  sourceId  String?  @unique
   createdAt DateTime @default(now())
 
   @@index([date])

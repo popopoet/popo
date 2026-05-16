@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { fetchHistoryDeals } from '@/lib/metaapi'
+import { fetchHistoryDeals, fetchBalanceOps } from '@/lib/metaapi'
 import { prisma } from '@/lib/prisma'
 import type { Direction, Session, Result, Grade } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-const BUILD_MARKER = 'v4-debug-sync'
+const BUILD_MARKER = 'v5-with-withdrawals'
 
 async function runSync(days: number) {
   const to = new Date()
@@ -14,7 +14,10 @@ async function runSync(days: number) {
   from.setDate(from.getDate() - days)
 
   const startedAt = Date.now()
-  const deals = await fetchHistoryDeals(from, to)
+  const [deals, balanceOps] = await Promise.all([
+    fetchHistoryDeals(from, to),
+    fetchBalanceOps(from, to),
+  ])
   const fetchMs = Date.now() - startedAt
 
   let synced = 0
@@ -46,7 +49,31 @@ async function runSync(days: number) {
     synced++
   }
 
-  return { marker: BUILD_MARKER, count: synced, fetched: deals.length, fetchMs, days }
+  let syncedWithdrawals = 0
+  for (const op of balanceOps) {
+    if (op.type !== 'WITHDRAWAL') continue
+    const existing = await prisma.withdrawal.findUnique({ where: { sourceId: op.sourceId } })
+    if (existing) continue
+    await prisma.withdrawal.create({
+      data: {
+        amount: op.amount,
+        date: op.date,
+        note: op.note || null,
+        sourceId: op.sourceId,
+      },
+    })
+    syncedWithdrawals++
+  }
+
+  return {
+    marker: BUILD_MARKER,
+    count: synced,
+    fetched: deals.length,
+    withdrawals: syncedWithdrawals,
+    balanceOps: balanceOps.length,
+    fetchMs,
+    days,
+  }
 }
 
 function errorPayload(e: unknown) {
