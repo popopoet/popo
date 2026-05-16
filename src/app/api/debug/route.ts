@@ -7,7 +7,8 @@ function maskUrl(url: string | undefined): string {
   if (!url) return 'NOT SET'
   try {
     const u = new URL(url)
-    return `${u.protocol}//${u.username}:***${u.password.slice(-4)}@${u.host}${u.pathname}`
+    const query = u.search ? ' ' + u.search : ''
+    return `${u.protocol}//${u.username}:***${u.password.slice(-4)}@${u.host}${u.pathname}${query}`
   } catch {
     return `INVALID URL: ${url.slice(0, 30)}...`
   }
@@ -15,12 +16,17 @@ function maskUrl(url: string | undefined): string {
 
 async function testConnection(url: string | undefined) {
   if (!url) return { status: 'SKIPPED - not set' }
-  const client = new Client({
-    connectionString: url,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 5000,
-  })
   try {
+    const u = new URL(url)
+    const client = new Client({
+      host: u.hostname,
+      port: Number(u.port),
+      user: decodeURIComponent(u.username),
+      password: decodeURIComponent(u.password),
+      database: u.pathname.slice(1) || 'postgres',
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 5000,
+    })
     await client.connect()
     const r = await client.query('SELECT current_user')
     await client.end()
