@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Trade {
+  id            String    @id @default(cuid())
+  symbol        String    @default("XAUUSD")
+  direction     Direction
+  entryPrice    Float
+  stopLoss      Float
+  takeProfit    Float
+  lots          Float
+  entryAt       DateTime
+  exitAt        DateTime?
+  exitPrice     Float?
+  session       Session
+  result        Result    @default(OPEN)
+  pips          Float     @default(0)
+  pl            Float     @default(0)
+  rr            Float     @default(0)
+  grade         Grade     @default(B)
+  screenshotUrl String?
+  notes         String?
+  confluence    Json      @default("{}")
+  aiReview      Json?
+  sourceId      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([entryAt])
+  @@index([sourceId])
+}
+
+enum Direction { BUY SELL }
+enum Session  { LONDON NEW_YORK ASIA }
+enum Result   { WIN LOSS BREAKEVEN OPEN }
+enum Grade    { A_PLUS A B C }
